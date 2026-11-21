@@ -1,0 +1,4 @@
+# Changes to specs, tests and CI config require review from the repo owner.
+/specs/   @colonoh
+/tests/   @colonoh
+/.github/ @colonoh
