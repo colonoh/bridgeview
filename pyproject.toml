@@ -28,3 +28,6 @@ dev = [
 
 [tool.coverage.report]
 fail_under = 90
+
+[tool.pytest.ini_options]
+addopts = "--cov=bridgeview --cov-report=term-missing"
