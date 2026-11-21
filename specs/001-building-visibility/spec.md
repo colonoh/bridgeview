@@ -8,6 +8,14 @@
 
 **Input**: User description: "Determine which San Francisco buildings have a line of sight to the Golden Gate Bridge, Alcatraz Island, and the Bay Bridge, using public building footprint and height data. Other buildings can block the view. The dataset is downloaded by a script that pins its version and checks its checksum. Correctness is checked against small hand-worked cases, such as three box-shaped buildings and a target whose visibility is worked out by hand. The output should be a format that can be easily checked, and useful for a web page that shows the results is a separate, later feature."
 
+## Clarifications
+
+### Session 2026-11-21
+
+- Q: When the building data gives more than one height for a building, which one is used? → A: The observer uses the lowest recorded roof height, and the obstruction uses the highest recorded height. Viewing from inside, at floor level, is deferred to a later feature.
+- Q: For an L-shaped, U-shaped or courtyard building whose geometric center falls outside the footprint, where is the observer? → A: Always at the geometric center, even when it falls outside the footprint.
+- Q: Does the ground-elevation model show bare ground or the surface including buildings and trees? → A: Bare ground only, with buildings, trees and other structures removed.
+
 ## User Scenarios & Testing *(mandatory)*
 
 The primary user is the project owner, who needs trustworthy visibility results and must be
@@ -51,7 +59,7 @@ involved. Every building's result must match the hand-worked answer.
 ### User Story 2 - Obtain the city data reproducibly (Priority: P2)
 
 The project owner runs a single command that downloads the public San Francisco building
-footprint and height dataset and the public ground-elevation model. The command always fetches
+footprint and height dataset and the public bare-ground elevation model. The command always fetches
 the same pinned versions and confirms each file is intact before anything uses it.
 
 **Why this priority**: City-wide results are only meaningful and repeatable if everyone works
@@ -105,6 +113,10 @@ judged visible and why any were not, for example which building blocked the view
 - **Grazing sight lines**: a sight line that only touches the edge or top of another building,
   without passing through it, counts as not blocked. This makes hand-worked answers
   unambiguous.
+- **Irregular footprints**: for an L-shaped, U-shaped or courtyard building, the viewpoint may
+  sit above open ground or a neighboring lot. It is still treated as that building's viewpoint,
+  and that building still does not block its own view. If the viewpoint falls inside a
+  neighboring building's block, that neighbor blocks the view as normal.
 - **Adjacent buildings**: buildings that share a wall can block each other like any other
   building.
 - **Buildings near or on the landmarks**: buildings on Treasure Island, Yerba Buena Island or
@@ -123,16 +135,21 @@ judged visible and why any were not, for example which building blocked the view
 
 - **FR-001**: The system MUST decide, for each building and each landmark, whether an
   unobstructed straight sight line exists from the building's viewpoint to the landmark.
-  The viewpoint is a single point at the building's roof height, directly above the center of
-  its footprint. Roof height is the building's ground elevation plus its recorded height.
+  The viewpoint is a single point at the building's roof height, directly above the geometric
+  center of its footprint. The geometric center is used even when it falls outside the
+  footprint, for example in a courtyard. The viewpoint's height is the building's ground elevation plus its lowest
+  recorded roof height.
 - **FR-002**: Each landmark MUST be represented by a small set of documented reference points,
   for example both tower tops and midspan of a bridge, or several points around the island.
   A landmark MUST count as visible from a building when at least one of its reference points
   has an unobstructed sight line from the building's viewpoint.
 - **FR-003**: Other buildings MUST be treated as solid blocks rising from their footprint to
-  their recorded height, and MUST block a sight line that passes through them.
+  their ground elevation plus their highest recorded height, and MUST block a sight line that
+  passes through them. Where the source data gives only one height for a building, that
+  height is used for both the observer and the obstruction.
 - **FR-004**: The ground MUST block sight lines that pass below its surface, using a public
-  ground-elevation model of the city. That model is a second pinned dataset, subject to the
+  bare-ground elevation model of the city, which excludes buildings, trees and other
+  structures. That model is a second pinned dataset, subject to the
   same version, checksum and provenance rules as the building data (FR-009 to FR-012).
 - **FR-005**: A building MUST NOT block its own view.
 - **FR-006**: A sight line that only touches an obstruction's surface MUST count as not
@@ -149,7 +166,7 @@ judged visible and why any were not, for example which building blocked the view
 
 - **FR-009**: A download command MUST fetch one specific, pinned version of each city
   dataset: the public San Francisco building footprint and height dataset, and the public
-  ground-elevation model.
+  bare-ground elevation model.
 - **FR-010**: The download command MUST verify each file against a recorded checksum. A
   mismatch MUST stop the process and MUST NOT leave a file that later steps would use.
 - **FR-011**: The city datasets MUST NOT be stored in the repository.
@@ -186,11 +203,13 @@ judged visible and why any were not, for example which building blocked the view
 ### Key Entities
 
 - **Building**: a structure from the source dataset. It has a source identifier, a footprint
-  shape, a height and, where available, ground elevation. A building is both an observer and a
+  shape, a lowest roof height (used for its viewpoint), a highest height (used when it blocks
+  others) and a ground elevation. A building is both an observer and a
   potential obstruction.
 - **Landmark**: one of the three targets. It has a name, a small set of named reference
   points with locations and heights, and a documented source for those values.
-- **Ground Elevation Model**: the height of the ground surface across the city. It is used both
+- **Ground Elevation Model**: the height of the bare ground across the city, excluding
+  buildings and vegetation. It is used both
   to place buildings and as an obstruction.
 - **Scene**: the buildings, ground and landmarks for one computation run, either a small
   hand-worked fixture or the full city data.
@@ -222,10 +241,14 @@ judged visible and why any were not, for example which building blocked the view
 - The city-wide run covers every building in the chosen public dataset that lies within the
   City and County of San Francisco, including Treasure Island, Yerba Buena Island and Alcatraz.
 - The chosen building dataset provides a footprint and a height for most buildings. A public
-  ground-elevation model covering all of San Francisco, including the islands, is available.
+  bare-ground elevation model covering all of San Francisco, including the islands, is available.
   The exact datasets and versions are chosen during planning and recorded per FR-012.
 - Trees, ground features finer than the elevation model's resolution, weather, haze and window
   placement are ignored. Visibility here means geometric line of sight only.
+- Observing from the lowest roof height and blocking at the highest height is deliberately
+  cautious: it errs toward reporting a view as blocked. Rooftop spires and antennas are
+  treated as solid blocks over the whole footprint. Observing from inside the building at
+  floor level is a later feature.
 - Observing from one point at the roof center and checking a few points per landmark is a
   deliberate simplification for this first version. Sampling more of the roof edge is a
   possible later refinement.
