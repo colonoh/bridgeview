@@ -1,0 +1,27 @@
+[project]
+name = "bridgeview"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+authors = [
+    { name = "colonoh-bot", email = "colonoh@gmail.com" }
+]
+requires-python = ">=3.14"
+dependencies = [
+    "geopandas>=1.2.0",
+    "numpy>=2.5.5",
+    "pyproj>=3.8.0",
+    "shapely>=2.2.0",
+]
+
+[build-system]
+requires = ["uv_build>=0.13.9,<0.14.0"]
+build-backend = "uv_build"
+
+[dependency-groups]
+dev = [
+    "hypothesis>=6.170.17",
+    "mutmut>=3.8.1",
+    "pytest>=9.2.0",
+    "pytest-cov>=7.1.0",
+]
