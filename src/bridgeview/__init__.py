@@ -1,2 +1,29 @@
-def hello() -> str:
-    return "Hello from bridgeview!"
+"""Bridgeview: which San Francisco buildings can see the Golden Gate Bridge,
+Alcatraz and the Bay Bridge.
+
+Geometry is computed in EPSG:26910 (metres) with NAVD88 heights (metres).
+"""
+
+from importlib.metadata import version
+
+from bridgeview.ground import GroundModel
+from bridgeview.results import BuildingResult, RunMeta, VisibilityResult, write_results_csv
+from bridgeview.scene import Building, Landmark, ReferencePoint, Scene, load_scene
+from bridgeview.visibility import compute_visibility
+
+__version__: str = version("bridgeview")
+
+__all__ = [
+    "Building",
+    "BuildingResult",
+    "GroundModel",
+    "Landmark",
+    "ReferencePoint",
+    "RunMeta",
+    "Scene",
+    "VisibilityResult",
+    "__version__",
+    "compute_visibility",
+    "load_scene",
+    "write_results_csv",
+]
