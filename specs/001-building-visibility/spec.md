@@ -120,8 +120,11 @@ judged visible and why any were not, for example which building blocked the view
 - **Adjacent buildings**: buildings that share a wall can block each other like any other
   building.
 - **Buildings near or on the landmarks**: buildings on Treasure Island, Yerba Buena Island or
-  Alcatraz are evaluated like any other building. A building on Alcatraz is reported as seeing
-  Alcatraz.
+  Alcatraz are evaluated like any other building, with no special case for being on or near a
+  landmark.
+- **A landmark's own structure**: a building whose footprint contains a reference point does
+  not block the view of that point. For example, a lighthouse building does not hide its own
+  lantern.
 - **Distance**: there is no maximum viewing distance. A building is judged only on whether the
   sight line is clear, allowing for the curvature of the Earth.
 - **Bad download**: if the download fails partway or produces a checksum mismatch, the partial

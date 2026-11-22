@@ -11,6 +11,7 @@ calculation (FR-019).
 name = "three_boxes_blocked"
 crs = "EPSG:26910"          # required; fixtures sit at real SF-area coordinates
 curvature = false           # optional, default true; false makes hand arithmetic exact
+landmarks_version = "fixture"  # optional, default "fixture"
 
 [ground]                     # either a constant plane...
 constant_z = 0.0
@@ -23,6 +24,7 @@ id = "A"
 footprint = [[550000, 4180000], [550010, 4180000], [550010, 4180010], [550000, 4180010]]
 viewpoint_z = 10.0
 top_z = 10.0
+ground_z = 0.0               # optional; used only for the missing_height check
 
 [[landmarks]]
 id = "target"
@@ -47,3 +49,5 @@ source = "fixture"
 | `ground_ridge` | A grid with a ridge above the line, so the blocker is `ground` | US1 scenario 6 |
 | `courtyard` | A U-shaped footprint whose centroid is outside it | Clarification Q2 |
 | `curvature` | A low line over about 10 km of flat ground, blocked only once curvature is applied | FR-007 |
+| `target_in_footprint` | A reference point inside a building whose `top_z` is above the point. That building doesn't block the point, but a building in between still does. | Spec Edge Cases (a landmark's own structure) |
+| `zero_height` | A building with `viewpoint_z` equal to `ground_z` is `not_evaluated` with reason `missing_height`, and it doesn't block others | Spec Edge Cases (missing or invalid height) |

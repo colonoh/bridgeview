@@ -22,7 +22,8 @@ One footprint from the building dataset, or from a fixture scene.
 
 **Not-evaluated reasons**, which form a closed set:
 - `invalid_geometry`
-- `missing_height`
+- `missing_height`: `viewpoint_z` or `top_z` is missing or not finite, or `viewpoint_z` is at
+  or below `ground_z` when `ground_z` is given. The last case covers zero-height buildings.
 - `viewpoint_outside_elevation_model`: the centroid falls on nodata or outside the elevation
   model.
 - `viewpoint_below_ground`: `viewpoint_z` is below the elevation model at the centroid.
@@ -36,11 +37,11 @@ Loaded from `src/bridgeview/landmarks.toml`, or from the scene file for fixtures
 
 | Field | Type | Rules |
 |---|---|---|
-| `landmarks_version` | str | Required, at the top level of the file; written into every output row |
+| `landmarks_version` | str | Required at the top level of `landmarks.toml`. Optional in fixture scenes, where it defaults to `"fixture"`. Written into every output row. |
 | `Landmark.id` | str | One of `golden_gate`, `alcatraz` or `bay_bridge` for the city; free-form for fixtures |
 | `Landmark.name` | str | Human-readable name |
 | `ReferencePoint.id` | str | Unique across all landmarks; contains no `;`, `=` or `,` |
-| `ReferencePoint.lat`, `.lon` | float | WGS84; converted to EPSG:26910 on load |
+| `ReferencePoint.lat`, `.lon` | float | WGS84; converted to EPSG:26910 on load. Fixture scenes give EPSG:26910 `x` and `y` in their place (contracts/scene-fixture.md). |
 | `ReferencePoint.z` | float, m | NAVD88 |
 | `ReferencePoint.source` | str | Required: the citation for the position and height |
 
@@ -64,8 +65,12 @@ plane, defined in the scene file.
 ## Scene
 
 Everything one computation run needs: the buildings, a GroundModel, the landmarks and their
-reference points, and a `dataset_version` string. For the city, `dataset_version` joins the
-pinned dataset ids. For a fixture, it is the fixture name.
+reference points, and the fields below.
+
+| Field | Type | Rules |
+|---|---|---|
+| `Scene.dataset_version` | str | For the city, the pinned dataset ids joined with `+`, in `datasets.toml` order. For a fixture, the scene's `name`. |
+| `Scene.landmarks_version` | str | Taken from `landmarks_version` (see Landmark) |
 
 ## SightLine (internal)
 
