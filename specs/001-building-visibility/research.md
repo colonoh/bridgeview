@@ -180,6 +180,26 @@ elevation model along the line for the ground.
    about 8×10⁸ building checks, and about 10¹⁰ ground samples. That fits in the 1-hour target
    (SC-004) on 8 cores. A benchmark task confirms this early.
 
+**Benchmark (T050, 2026-11-22)**, on a 2-core, 3 GB machine with the real data:
+
+| Version | ms per observer (one core) | Full city, 2 cores | Full city, 8 cores (est.) |
+|---|---|---|---|
+| First implementation | ~1,400 | ~34 h | ~8.6 h |
+| + query the index with 100 m segments | ~95 | — | — |
+| + bounding-box upper-bound filter | ~60 | **88 min** | **~22 min** |
+
+- Profiling showed that querying the STRtree with whole sight lines dominated: a long
+  diagonal line's bounding box covers thousands of footprints. Splitting each line into
+  ≤100 m segments for the query fixed that.
+- Projecting a footprint's bounding box onto the line gives an upper bound on its clearance,
+  so most crossed footprints, which are far below the line, skip the exact intersection.
+  Both changes are exact: on 2,600 real sight lines the outcomes were identical before and
+  after.
+- Loading the city takes about 35 s once the elevation cache exists; building the cache the
+  first time adds about 20 s. Peak memory is about 1.3 GB.
+- SC-004 (under 1 hour) is met on an 8-core laptop. The raster pre-filter fallback is not
+  needed.
+
 **Alternatives considered**:
 - Rasterise the buildings and march along each line through one combined height grid:
   simpler and faster, but not exact, so grazing and box fixtures would depend on the grid
