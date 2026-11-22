@@ -105,7 +105,7 @@ def _sha256_of(path: Path) -> str:
 
 
 def check_file(pin: DatasetPin, path: Path) -> None:
-    """Raise ChecksumError unless ``path`` exists and matches ``pin``'s size and SHA-256."""
+    """Raise ChecksumError unless ``path`` exists and matches ``pin``'s size (bytes) and SHA-256."""
     if not path.is_file():
         raise ChecksumError(f"missing {path} for {pin.id}; run 'bridgeview download'")
     size = path.stat().st_size

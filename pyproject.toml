@@ -1,7 +1,7 @@
 [project]
 name = "bridgeview"
 version = "0.1.0"
-description = "Add your description here"
+description = "Which San Francisco buildings can see the Golden Gate Bridge, Alcatraz and the Bay Bridge"
 readme = "README.md"
 authors = [
     { name = "colonoh-bot", email = "colonoh@gmail.com" }
@@ -45,3 +45,9 @@ files = ["src"]
 # These packages ship no type information (no py.typed).
 module = ["shapely.*", "rasterio.*", "geopandas.*", "pandas.*"]
 ignore_missing_imports = true
+
+[tool.mutmut]
+source_paths = ["src"]
+only_mutate = ["src/bridgeview/visibility.py"]
+also_copy = ["tests", "datasets.toml"]
+pytest_add_cli_args = ["--no-cov", "-p", "no:cacheprovider"]

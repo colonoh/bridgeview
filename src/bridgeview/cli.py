@@ -87,17 +87,12 @@ def main(argv: Sequence[str] | None = None) -> int:
 
             download_all(args.data_dir)
             return 0
-        if args.command == "snapshot-buildings":
-            from bridgeview.pins import snapshot_buildings
+        from bridgeview.pins import snapshot_buildings
 
-            size, sha = snapshot_buildings(args.out)
-            print(f"size {size}\nsha256 {sha}")
-            return 0
-        raise NotImplementedError(f"'{args.command}' is not implemented yet")  # pragma: no cover
+        size, sha = snapshot_buildings(args.out)  # the only other subcommand
+        print(f"size {size}\nsha256 {sha}")
+        return 0
     except BridgeviewError as e:
-        print(f"error: {e}", file=sys.stderr)
-        return 1
-    except NotImplementedError as e:
         print(f"error: {e}", file=sys.stderr)
         return 1
 

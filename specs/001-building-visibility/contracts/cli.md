@@ -45,4 +45,4 @@ These are public functions in `bridgeview`. Each is typed and documented, with u
 - `load_city_scene(data_dir: Path) -> Scene`
 - `compute_visibility(scene: Scene, workers: int | None = None) -> list[BuildingResult]`
 - `write_results_csv(results: Iterable[BuildingResult], path: Path, meta: RunMeta, landmark_ids: Sequence[str]) -> None`, where `landmark_ids` fixes the column order even when there are no results
-- `verify_pins(data_dir: Path) -> None`, which raises `ChecksumError`
+- `verify_pins(data_dir: Path) -> list[DatasetPin]`, which raises `ChecksumError`
