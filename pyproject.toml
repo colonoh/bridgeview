@@ -11,6 +11,7 @@ dependencies = [
     "geopandas>=1.2.0",
     "numpy>=2.5.5",
     "pyproj>=3.8.0",
+    "rasterio>=1.5.2",
     "shapely>=2.2.0",
 ]
 
@@ -22,6 +23,7 @@ build-backend = "uv_build"
 dev = [
     "hypothesis>=6.170.17",
     "mutmut>=3.8.1",
+    "mypy>=2.4.1",
     "pytest>=9.2.0",
     "pytest-cov>=7.1.0",
 ]
@@ -31,3 +33,15 @@ fail_under = 90
 
 [tool.pytest.ini_options]
 addopts = "--cov=bridgeview --cov-report=term-missing"
+
+[project.scripts]
+bridgeview = "bridgeview.cli:main"
+
+[tool.mypy]
+strict = true
+files = ["src"]
+
+[[tool.mypy.overrides]]
+# These packages ship no type information (no py.typed).
+module = ["shapely.*", "rasterio.*", "geopandas.*"]
+ignore_missing_imports = true
