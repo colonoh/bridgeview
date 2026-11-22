@@ -42,6 +42,8 @@ GROUND_STEP_M = 1.0
 GROUND_END_SKIP_M = 2.0
 #: Observers evaluated per vectorised batch.
 BATCH_SIZE = 16
+#: Longest segment used when querying the footprint index (m).
+QUERY_SEGMENT_M = 100.0
 #: Most ground samples held in memory at once.
 GROUND_CHUNK = 2_000_000
 
@@ -85,6 +87,7 @@ class _Index:
     top_z: FloatArray  # tree position -> top_z (m)
     contains_keys: NDArray[np.int64]  # point index * n_tree + tree position, for footprints containing a point
     id_rank: NDArray[np.intp]  # tree position -> rank of building_id (tie-break)
+    bounds: FloatArray  # tree position -> (min_x, min_y, max_x, max_y), m
 
 
 def _build_index(scene: Scene, points: list[ReferencePoint]) -> _Index:
@@ -98,7 +101,37 @@ def _build_index(scene: Scene, points: list[ReferencePoint]) -> _Index:
     ids = np.array([scene.buildings[i].building_id for i in idx], dtype=object)
     rank = np.empty(len(idx), dtype=np.intp)
     rank[np.argsort(ids, kind="stable")] = np.arange(len(idx))
-    return _Index(tree, np.array(idx, dtype=np.intp), tops, np.sort(keys), rank)
+    bounds = shapely.bounds(np.asarray(geoms, dtype=object)).reshape(-1, 4)
+    return _Index(tree, np.array(idx, dtype=np.intp), tops, np.sort(keys), rank, bounds)
+
+
+def _crossed_footprints(
+    index: _Index,
+    vx: FloatArray,
+    vy: FloatArray,
+    ux: FloatArray,
+    uy: FloatArray,
+    dist: FloatArray,
+) -> tuple[NDArray[np.intp], NDArray[np.intp]]:
+    """Unique (line, tree position) pairs where a line crosses a footprint.
+
+    A long diagonal line has a huge bounding box, so querying the tree with it
+    tests thousands of footprints. Each line is split into segments of at most
+    QUERY_SEGMENT_M for the query instead, and the pairs are deduplicated.
+    """
+    n_seg = np.maximum(np.ceil(dist / QUERY_SEGMENT_M).astype(np.int64), 1)
+    line = np.repeat(np.arange(len(dist)), n_seg)
+    starts = np.cumsum(n_seg) - n_seg
+    k = np.arange(int(n_seg.sum())) - np.repeat(starts, n_seg)
+    step = dist[line] / n_seg[line]
+    d0, d1 = k * step, (k + 1) * step
+    x0, y0 = vx[line] + ux[line] * d0, vy[line] + uy[line] * d0
+    x1, y1 = vx[line] + ux[line] * d1, vy[line] + uy[line] * d1
+    segs = shapely.linestrings(np.stack([np.c_[x0, y0], np.c_[x1, y1]], axis=1))
+    si, tj = index.tree.query(segs, predicate="intersects")
+    n_tree = max(len(index.building_index), 1)
+    keys = np.unique(line[si].astype(np.int64) * n_tree + tj)
+    return (keys // n_tree).astype(np.intp), (keys % n_tree).astype(np.intp)
 
 
 def _evaluate_batch(
@@ -139,7 +172,7 @@ def _evaluate_batch(
 
     # --- Buildings: exact intersection of each line with each crossed footprint.
     lines = shapely.linestrings(np.stack([np.c_[vx, vy], np.c_[px, py]], axis=1))
-    li, tj = index.tree.query(lines, predicate="intersects")
+    li, tj = _crossed_footprints(index, vx, vy, ux, uy, dist)
     # Skip the observer's own footprint (FR-005) and any footprint containing the
     # target point (spec Edge Cases: a landmark's own structure).
     keep = (tj != own[li]) & (dist[li] > 0)
@@ -148,6 +181,18 @@ def _evaluate_batch(
         keys = pk[li].astype(np.int64) * n_tree + tj.astype(np.int64)
         keep &= ~np.isin(keys, index.contains_keys)
     li, tj = li[keep], tj[keep]
+    if len(li):
+        # Cheap upper bound first: the footprint's bounding box, projected onto the
+        # line, contains its true stretch. If even that can't rise above the line,
+        # the exact intersection is not needed.
+        bx0, by0, bx1, by1 = index.bounds[tj].T
+        cx = np.stack([bx0, bx1, bx1, bx0], axis=1) - vx[li, None]
+        cy = np.stack([by0, by0, by1, by1], axis=1) - vy[li, None]
+        proj = cx * ux[li, None] + cy * uy[li, None]
+        lo = np.clip(proj.min(axis=1), 0.0, dist[li])
+        hi = np.clip(proj.max(axis=1), 0.0, dist[li])
+        could = max_clearance(index.top_z[tj], vz[li], slope[li], c, lo, hi) > MARGIN_M
+        li, tj = li[could], tj[could]
     if len(li):
         inter = shapely.intersection(lines[li], index.tree.geometries[tj])
         parts, part_pair = shapely.get_parts(inter, return_index=True)
