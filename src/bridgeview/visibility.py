@@ -12,6 +12,9 @@ so a line that only touches a surface is not blocked (FR-006).
 from __future__ import annotations
 
 import math
+import multiprocessing
+import os
+from collections.abc import Callable
 from dataclasses import dataclass
 
 import numpy as np
@@ -38,7 +41,9 @@ GROUND_STEP_M = 1.0
 #: Length at each end of a sight line where the ground is not sampled (m).
 GROUND_END_SKIP_M = 2.0
 #: Observers evaluated per vectorised batch.
-BATCH_SIZE = 64
+BATCH_SIZE = 16
+#: Most ground samples held in memory at once.
+GROUND_CHUNK = 2_000_000
 
 GROUND = "ground"
 
@@ -79,6 +84,7 @@ class _Index:
     building_index: NDArray[np.intp]  # tree position -> index in scene.buildings
     top_z: FloatArray  # tree position -> top_z (m)
     contains_keys: NDArray[np.int64]  # point index * n_tree + tree position, for footprints containing a point
+    id_rank: NDArray[np.intp]  # tree position -> rank of building_id (tie-break)
 
 
 def _build_index(scene: Scene, points: list[ReferencePoint]) -> _Index:
@@ -89,7 +95,10 @@ def _build_index(scene: Scene, points: list[ReferencePoint]) -> _Index:
     pts = shapely.points([(p.x, p.y) for p in points])
     pk, tj = tree.query(pts, predicate="intersects")
     keys = pk.astype(np.int64) * max(len(geoms), 1) + tj.astype(np.int64)
-    return _Index(tree, np.array(idx, dtype=np.intp), tops, np.sort(keys))
+    ids = np.array([scene.buildings[i].building_id for i in idx], dtype=object)
+    rank = np.empty(len(idx), dtype=np.intp)
+    rank[np.argsort(ids, kind="stable")] = np.arange(len(idx))
+    return _Index(tree, np.array(idx, dtype=np.intp), tops, np.sort(keys), rank)
 
 
 def _evaluate_batch(
@@ -161,34 +170,33 @@ def _evaluate_batch(
                 index.top_z[tj[part_pair]], vz[part_line], slope[part_line], c, d0, d1
             )
             blocked = ok & (clear > MARGIN_M)
-            for p in np.flatnonzero(blocked):
-                line = int(part_line[p])
-                cand_d = float(d0[p])
-                cand_b = int(index.building_index[tj[part_pair[p]]])
-                if cand_d < bld_d[line] or (
-                    cand_d == bld_d[line]
-                    and scene.buildings[cand_b].building_id
-                    < scene.buildings[int(bld_id[line])].building_id
-                ):
-                    bld_d[line], bld_id[line] = cand_d, cand_b
+            if blocked.any():
+                # Nearest blocker per line; ties broken by building id (deterministic).
+                bl = np.flatnonzero(blocked)
+                lines_b, d_b = part_line[bl], d0[bl]
+                tpos_b = tj[part_pair[bl]]
+                order = np.lexsort((index.id_rank[tpos_b], d_b, lines_b))
+                ls = lines_b[order]
+                first = order[np.r_[True, ls[1:] != ls[:-1]]]
+                bld_d[lines_b[first]] = d_b[first]
+                bld_id[lines_b[first]] = index.building_index[tpos_b[first]]
 
     # --- Ground: sample every GROUND_STEP_M, skipping GROUND_END_SKIP_M at each end.
+    # Only the stretch before the nearest building blocker can change the answer.
     gnd_d = np.full(n_lines, np.inf)
+    reach = np.minimum(dist - GROUND_END_SKIP_M, bld_d)
     n_samples = np.maximum(
-        np.floor((dist - 2 * GROUND_END_SKIP_M) / GROUND_STEP_M).astype(np.intp) + 1, 0
+        np.floor((reach - GROUND_END_SKIP_M) / GROUND_STEP_M).astype(np.int64) + 1, 0
     )
-    total = int(n_samples.sum())
-    if total:
-        line_of_sample = np.repeat(np.arange(n_lines), n_samples)
-        starts = np.cumsum(n_samples) - n_samples
-        k = np.arange(total) - np.repeat(starts, n_samples)
-        ds = GROUND_END_SKIP_M + k * GROUND_STEP_M
-        sx = vx[line_of_sample] + ux[line_of_sample] * ds
-        sy = vy[line_of_sample] + uy[line_of_sample] * ds
-        g = scene.ground.sample(sx, sy)
-        exceed = (g - c * ds * ds) - (vz[line_of_sample] + slope[line_of_sample] * ds)
-        hit = exceed > MARGIN_M  # NaN (nodata) compares False: no ground there
-        np.minimum.at(gnd_d, line_of_sample[hit], ds[hit])
+    ends = np.cumsum(n_samples)
+    start_line = 0
+    while start_line < n_lines:
+        # Chunk lines so that at most GROUND_CHUNK samples are held at once.
+        base = ends[start_line - 1] if start_line else 0
+        stop = int(np.searchsorted(ends, base + GROUND_CHUNK, side="right"))
+        stop = max(stop, start_line + 1)
+        _ground_hits(scene, c, gnd_d, n_samples, start_line, stop, vx, vy, vz, ux, uy, slope)
+        start_line = stop
 
     out: dict[tuple[int, int], tuple[bool, str | None]] = {}
     for line in range(n_lines):
@@ -200,6 +208,34 @@ def _evaluate_batch(
         else:
             out[key] = (False, GROUND)
     return out
+
+
+def _ground_hits(
+    scene: Scene,
+    c: float,
+    gnd_d: FloatArray,
+    n_samples: NDArray[np.int64],
+    lo: int,
+    hi: int,
+    vx: FloatArray,
+    vy: FloatArray,
+    vz: FloatArray,
+    ux: FloatArray,
+    uy: FloatArray,
+    slope: FloatArray,
+) -> None:
+    """Record in ``gnd_d`` the first ground-blocked distance for lines ``lo..hi-1``."""
+    counts = n_samples[lo:hi]
+    total = int(counts.sum())
+    if not total:
+        return
+    line = np.repeat(np.arange(lo, hi), counts)
+    starts = np.cumsum(counts) - counts
+    ds = GROUND_END_SKIP_M + (np.arange(total) - np.repeat(starts, counts)) * GROUND_STEP_M
+    g = scene.ground.sample(vx[line] + ux[line] * ds, vy[line] + uy[line] * ds)
+    exceed = (g - c * ds * ds) - (vz[line] + slope[line] * ds)
+    hit = exceed > MARGIN_M  # NaN (nodata, e.g. open water) compares False
+    np.minimum.at(gnd_d, line[hit], ds[hit])
 
 
 def _not_evaluated(scene: Scene, b: Building) -> BuildingResult:
@@ -214,23 +250,62 @@ def _not_evaluated(scene: Scene, b: Building) -> BuildingResult:
     )
 
 
-def compute_visibility(scene: Scene, workers: int | None = None) -> list[BuildingResult]:
+#: Shared with forked worker processes (copy-on-write); set only during a run.
+_WORKER_STATE: tuple[Scene, _Index, list[ReferencePoint], float] | None = None
+
+
+def _run_batch(batch: list[int]) -> dict[tuple[int, int], tuple[bool, str | None]]:
+    assert _WORKER_STATE is not None
+    scene, index, points, c = _WORKER_STATE
+    return _evaluate_batch(scene, index, points, batch, c)
+
+
+def compute_visibility(
+    scene: Scene,
+    workers: int | None = None,
+    progress: Callable[[int, int], None] | None = None,
+) -> list[BuildingResult]:
     """Visibility of every landmark from every building in ``scene``.
 
     Returns one BuildingResult per building, sorted by ``building_id``. A
     landmark is visible when at least one of its reference points has a clear
-    sight line (FR-002). ``workers`` is accepted for interface stability; this
-    version computes serially, and the result never depends on it.
+    sight line (FR-002).
+
+    ``workers`` is the number of processes (default: CPU count). Workers are
+    forked so they share the scene and the memory-mapped ground model; where
+    ``fork`` is unavailable the run is serial. The result never depends on
+    ``workers`` (FR-018). ``progress(done, total)`` is called after each batch
+    of observers.
     """
-    del workers  # serial for now; see tasks.md (US3 parallel driver)
+    global _WORKER_STATE
     points = [p for lm in scene.landmarks for p in lm.points]
     c = curvature_coefficient(scene.curvature)
     index = _build_index(scene, points)
     evaluable = [i for i, b in enumerate(scene.buildings) if b.evaluable]
+    batches = [evaluable[i : i + BATCH_SIZE] for i in range(0, len(evaluable), BATCH_SIZE)]
+    n_workers = workers or os.cpu_count() or 1
     outcomes: dict[tuple[int, int], tuple[bool, str | None]] = {}
-    for start in range(0, len(evaluable), BATCH_SIZE):
-        batch = evaluable[start : start + BATCH_SIZE]
-        outcomes.update(_evaluate_batch(scene, index, points, batch, c))
+    done = 0
+
+    def collect(out: dict[tuple[int, int], tuple[bool, str | None]], size: int) -> None:
+        nonlocal done
+        outcomes.update(out)
+        done += size
+        if progress is not None:
+            progress(done, len(evaluable))
+
+    use_pool = n_workers > 1 and len(batches) > 1
+    if use_pool and "fork" in multiprocessing.get_all_start_methods():
+        _WORKER_STATE = (scene, index, points, c)
+        try:
+            with multiprocessing.get_context("fork").Pool(n_workers) as pool:
+                for batch, out in zip(batches, pool.imap(_run_batch, batches, chunksize=4), strict=True):
+                    collect(out, len(batch))
+        finally:
+            _WORKER_STATE = None
+    else:
+        for batch in batches:
+            collect(_evaluate_batch(scene, index, points, batch, c), len(batch))
 
     results: list[BuildingResult] = []
     for bi, b in enumerate(scene.buildings):

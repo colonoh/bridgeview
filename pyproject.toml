@@ -43,5 +43,5 @@ files = ["src"]
 
 [[tool.mypy.overrides]]
 # These packages ship no type information (no py.typed).
-module = ["shapely.*", "rasterio.*", "geopandas.*"]
+module = ["shapely.*", "rasterio.*", "geopandas.*", "pandas.*"]
 ignore_missing_imports = true

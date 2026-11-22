@@ -51,9 +51,19 @@ def _compute(args: argparse.Namespace) -> int:
     from bridgeview.visibility import compute_visibility
 
     if args.city:
-        raise NotImplementedError("compute --city is not implemented yet")
-    scene = load_scene(args.scene)
-    results = compute_visibility(scene, workers=args.workers)
+        from bridgeview.pins import verify_pins
+        from bridgeview.scene import load_city_scene
+
+        verify_pins(args.data_dir)  # SC-006: refuse bad data before any output
+        scene = load_city_scene(args.data_dir)
+    else:
+        scene = load_scene(args.scene)
+
+    def progress(done: int, total: int) -> None:
+        if args.city and (done == total or done % 2000 < 16):
+            print(f"progress {done}/{total}", file=sys.stderr, flush=True)
+
+    results = compute_visibility(scene, workers=args.workers, progress=progress)
     meta = RunMeta(scene.dataset_version, scene.landmarks_version, __version__)
     write_results_csv(results, args.out, meta, [lm.id for lm in scene.landmarks])
     return 0
