@@ -180,6 +180,59 @@ elevation model along the line for the ground.
    about 8×10⁸ building checks, and about 10¹⁰ ground samples. That fits in the 1-hour target
    (SC-004) on 8 cores. A benchmark task confirms this early.
 
+**Benchmark (T050, 2026-11-22)**, on a 2-core, 3.8 GB machine with the real data
+(the last row's full-city times are extrapolated from 5,000 random buildings):
+
+| Version | ms per observer (one core) | Full city, 2 cores | Full city, 8 cores (est.) |
+|---|---|---|---|
+| First implementation | ~1,400 | ~34 h | ~8.6 h |
+| + query the index with 100 m segments | ~95 | — | — |
+| + bounding-box upper-bound filter | ~60 | **88 min** | **~22 min** |
+
+- Profiling showed that querying the STRtree with whole sight lines dominated: a long
+  diagonal line's bounding box covers thousands of footprints. Splitting each line into
+  ≤100 m segments for the query fixed that.
+- Projecting a footprint's bounding box onto the line gives an upper bound on its clearance,
+  so most crossed footprints, which are far below the line, skip the exact intersection.
+  Both changes are exact: on 2,600 real sight lines the outcomes were identical before and
+  after.
+- Loading the city takes about 35 s once the elevation cache exists; building the cache the
+  first time adds about 20 s. Peak memory is about 1.3 GB.
+- **Full run (T051, 2026-11-22, same machine, 2 workers)**: exit 0, 176,864 buildings
+  evaluated, peak RSS of the largest process 1.3 GB, but **7 h 8 min elapsed** against the
+  88 min extrapolated.
+  - CPU time was not the problem: 10,417 s of user time is 87 min on 2 cores, which matches
+    the benchmark.
+  - `sar` shows the run CPU-bound (about 99% user) for the first 50 minutes. From about 09:45
+    UTC it was I/O-bound (about 45-74% iowait, 41-90 MB/s read, under 10% user for most of
+    the rest), with 16.7 million major page faults in total. Available memory and
+    page cache each fell from about 1.0 GB to about 0.5 GB while committed memory rose. The
+    880 MB elevation cache is memory-mapped, so once it no longer fits in the page cache it
+    is re-read from disk continually.
+  - An earlier note put the run at about 2 h 50 min on 2 cores, from the rate of an
+    interrupted run. That figure is superseded.
+- **Memory fix and second full run (T051, 2026-11-22, same machine, 2 workers)**: exit 0 in
+  **1 h 23 min**, about 99.8% user CPU once started, 4,384 major page faults, and available
+  memory steady at 1.08-1.11 GB. Changes, none of which touch the computation:
+  - Outcomes are one int32 per sight line (about 9 MB for the city). Before, the parent kept
+    a dict entry with a tuple and a string for each of 2.3 million lines (several hundred MB,
+    estimated).
+  - Workers read precomputed arrays. Before, each rebuilt a 177,000-entry lookup for every
+    batch of 16 observers and read the Building objects, and reading Python objects copies
+    the pages they share with the parent.
+  - `GROUND_CHUNK` is 250,000 samples instead of 2,000,000, and the garbage collector is
+    frozen before forking.
+  - These were changed together, so their separate effects were not measured. Over the first
+    14,000 buildings, private memory per worker fell from about 310 to 210 MB.
+- The output of the second run is **byte-identical** to the first's (sha256 `c9ccb3a1…ed09`,
+  177,024 lines). The inputs were the same but the code was not, so this also shows that the
+  fix changed no answer on the real data.
+- SC-004 (under 1 hour) is **not yet measured on 8 cores**. 83 min on 2 cores extrapolates to
+  about 21 min on 8 if memory allows. Each worker uses about 210 MB of private memory, and the
+  880 MB elevation cache must stay in the page cache.
+- T051 stays open: quickstart §3 also asks for a rerun with a different worker count, and both
+  real runs used 2 workers. Only the synthetic-city test covers different counts so far.
+
 **Alternatives considered**:
 - Rasterise the buildings and march along each line through one combined height grid:
   simpler and faster, but not exact, so grazing and box fixtures would depend on the grid

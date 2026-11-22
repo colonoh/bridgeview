@@ -1,0 +1,112 @@
+# Landmark reference points (spec FR-002, FR-008; research R5; data-model.md: Landmark).
+#
+# Positions: WGS84 lat/lon. Bridge towers and the lighthouse are OpenStreetMap
+# centroids, (c) OpenStreetMap contributors, ODbL 1.0, retrieved 2026-11-21.
+# Heights: NAVD88 metres. "Above water" figures were converted with NOAA station
+# 9414290 datums (MLLW +0.02 m, MHW +1.61 m, MHHW +1.80 m relative to NAVD88).
+# A landmark counts as visible when any one of its points is visible.
+
+landmarks_version = "1"
+
+[[landmarks]]
+id = "golden_gate"
+name = "Golden Gate Bridge"
+
+[[landmarks.points]]
+id = "ggb_south_tower"
+lat = 37.81401
+lon = -122.47789
+z = 227.4
+source = "OSM way 1330049620; 746 ft above MLLW (goldengate.org design & construction stats)"
+
+[[landmarks.points]]
+id = "ggb_north_tower"
+lat = 37.82550
+lon = -122.47923
+z = 227.4
+source = "OSM way 1330832680; 746 ft above MLLW (goldengate.org design & construction stats)"
+
+[[landmarks.points]]
+id = "ggb_midspan"
+lat = 37.81976
+lon = -122.47856
+z = 68.9
+source = "Midpoint of the towers; 220 ft clearance above MHHW (goldengate.org), the underside of the deck"
+
+[[landmarks]]
+id = "alcatraz"
+name = "Alcatraz Island"
+
+[[landmarks.points]]
+id = "alc_lighthouse"
+lat = 37.82625
+lon = -122.42230
+z = 66.8
+source = "OSM way 99202294; focal plane 214 ft above MHW (U.S. Lighthouse Society)"
+
+[[landmarks.points]]
+id = "alc_north"
+lat = 37.82839
+lon = -122.42512
+z = 4.4
+source = "Northernmost land cell (>2 m) in USGS 1 m DEM CA_SanFrancisco_B23; ground 2.44 m + 2 m"
+
+[[landmarks.points]]
+id = "alc_south"
+lat = 37.82507
+lon = -122.42162
+z = 4.1
+source = "Southernmost land cell (>2 m) in USGS 1 m DEM CA_SanFrancisco_B23; ground 2.14 m + 2 m"
+
+[[landmarks.points]]
+id = "alc_east"
+lat = 37.82580
+lon = -122.42039
+z = 4.5
+source = "Easternmost land cell (>2 m) in USGS 1 m DEM CA_SanFrancisco_B23; ground 2.51 m + 2 m"
+
+[[landmarks.points]]
+id = "alc_west"
+lat = 37.82814
+lon = -122.42561
+z = 4.1
+source = "Westernmost land cell (>2 m) in USGS 1 m DEM CA_SanFrancisco_B23; ground 2.11 m + 2 m"
+
+[[landmarks]]
+id = "bay_bridge"
+name = "San Francisco–Oakland Bay Bridge"
+
+[[landmarks.points]]
+id = "bb_w1"
+lat = 37.79075
+lon = -122.38582
+z = 160.3
+source = "OSM way 432712476; 526 ft west-span tower (Wikipedia; OSM height=160), assumed above MLLW"
+
+[[landmarks.points]]
+id = "bb_w2"
+lat = 37.79559
+lon = -122.38065
+z = 160.3
+source = "OSM way 432712477; 526 ft west-span tower (Wikipedia; OSM height=160), assumed above MLLW"
+
+[[landmarks.points]]
+id = "bb_w3"
+lat = 37.80079
+lon = -122.37508
+z = 160.3
+source = "OSM way 432712478; 526 ft west-span tower (Wikipedia; OSM height=160), assumed above MLLW"
+
+[[landmarks.points]]
+id = "bb_w4"
+lat = 37.80562
+lon = -122.36990
+z = 160.3
+source = "OSM way 432712479; 526 ft west-span tower (Wikipedia; OSM height=160), assumed above MLLW"
+
+[[landmarks.points]]
+id = "bb_sas_tower"
+lat = 37.81527
+lon = -122.35851
+z = 160.0
+source = "OSM way 237735191; 525 ft SAS tower (Caltrans/MTC tower fact sheet), datum assumed MLLW"

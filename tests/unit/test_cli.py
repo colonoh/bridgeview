@@ -45,7 +45,3 @@ def test_download_without_pins_exits_1(
     assert main(["download"]) == 1
     assert capsys.readouterr().err.startswith("error: ")
 
-
-def test_compute_city_not_implemented_yet(capsys: pytest.CaptureFixture[str]) -> None:
-    assert main(["compute", "--city", "--out", "x.csv"]) == 1
-    assert "not implemented" in capsys.readouterr().err

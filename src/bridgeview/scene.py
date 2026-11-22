@@ -243,3 +243,116 @@ def load_scene(path: Path) -> Scene:
         landmarks_version=str(data.get("landmarks_version", "fixture")),
         curvature=bool(data.get("curvature", True)),
     )
+
+
+def load_landmarks(text: str | None = None) -> tuple[str, tuple[Landmark, ...]]:
+    """Load landmark reference points; return ``(landmarks_version, landmarks)``.
+
+    Reads the packaged ``landmarks.toml`` unless ``text`` is given. Points are
+    given as WGS84 latitude/longitude (EPSG:4326) and converted here to
+    EPSG:26910 metres; heights are NAVD88 metres and are not changed.
+
+    Raises SceneError if the file is invalid or has no ``landmarks_version``.
+    """
+    from importlib.resources import files
+
+    from pyproj import Transformer
+
+    if text is None:
+        text = files("bridgeview").joinpath("landmarks.toml").read_text(encoding="utf-8")
+    try:
+        data = tomllib.loads(text)
+    except tomllib.TOMLDecodeError as e:
+        raise SceneError(f"landmarks.toml: {e}") from e
+    version = data.get("landmarks_version")
+    if not isinstance(version, str) or not version:
+        raise SceneError("landmarks.toml: missing 'landmarks_version'")
+    to_utm = Transformer.from_crs("EPSG:4326", CRS, always_xy=True)
+    items = []
+    for lm in _req(data, "landmarks", "landmarks.toml"):
+        points = []
+        for p in _req(lm, "points", f"landmark {lm.get('id')}"):
+            where = f"point {p.get('id')}"
+            x, y = to_utm.transform(float(_req(p, "lon", where)), float(_req(p, "lat", where)))
+            points.append({**p, "x": x, "y": y})
+        items.append({**lm, "points": points})
+    return version, _load_landmarks(items)
+
+
+#: DataSF field -> Building field (data-model.md: Building; research R1).
+CITY_FIELDS = {
+    "building_id": "sf16_bldgid",
+    "viewpoint_z": "median_1st_m",
+    "top_z": "peak_1st_m",
+    "ground_z": "gnd_min_m",
+}
+#: Margin around buildings and landmarks when cropping the elevation model (m).
+GROUND_BUFFER_M = 500.0
+
+
+def load_city_scene(data_dir: Path, pins_path: Path | None = None) -> Scene:
+    """Load the pinned San Francisco data as a Scene.
+
+    Reads the building snapshot (``*.geojson.gz``, EPSG:4326) and reprojects the
+    footprints to EPSG:26910. Builds the ground model from the pinned ``*.tif``
+    tiles (EPSG:26910), cropped to the buildings and landmarks plus
+    ``GROUND_BUFFER_M`` and cached under ``<data_dir>/cache``. Does not verify
+    checksums; callers do that first (``bridgeview.pins.verify_pins``).
+
+    Raises SceneError if the pins don't name exactly one building file and at
+    least one tile, or if a required field is missing.
+    """
+    import geopandas as gpd
+    import numpy as np
+    import pandas as pd
+
+    from bridgeview.pins import PINS_FILE, load_pins
+
+    pins = load_pins(pins_path or PINS_FILE, allow_insecure=True)
+    raw = Path(data_dir) / "raw"
+    bfiles = [raw / p.filename for p in pins if p.filename.endswith(".geojson.gz")]
+    tiles = [raw / p.filename for p in pins if p.filename.endswith(".tif")]
+    if len(bfiles) != 1 or not tiles:
+        raise SceneError("datasets.toml must pin one *.geojson.gz and at least one *.tif")
+
+    gdf = gpd.read_file(f"/vsigzip/{bfiles[0]}", columns=list(CITY_FIELDS.values()))
+    missing = [f for f in CITY_FIELDS.values() if f not in gdf.columns]
+    if missing:
+        raise SceneError(f"building data is missing fields: {missing}")
+    if gdf.crs is None or gdf.crs.to_epsg() != 4326:
+        raise SceneError(f"building data must be EPSG:4326, got {gdf.crs}")
+    gdf = gdf.to_crs(CRS)  # EPSG:4326 -> EPSG:26910
+
+    version, landmarks = load_landmarks()
+    xs = [p.x for lm in landmarks for p in lm.points]
+    ys = [p.y for lm in landmarks for p in lm.points]
+    bx0, by0, bx1, by1 = gdf.total_bounds
+    extent = (
+        min(bx0, *xs) - GROUND_BUFFER_M,
+        min(by0, *ys) - GROUND_BUFFER_M,
+        max(bx1, *xs) + GROUND_BUFFER_M,
+        max(by1, *ys) + GROUND_BUFFER_M,
+    )
+    ground = GroundModel.from_tiles(tiles, extent, Path(data_dir) / "cache")
+
+    def num(col: str) -> list[float]:
+        vals = pd.to_numeric(gdf[CITY_FIELDS[col]], errors="coerce").to_numpy(dtype=float)
+        return [float(v) for v in np.asarray(vals)]
+
+    ids = gdf[CITY_FIELDS["building_id"]].astype(str).tolist()
+    geoms = gdf.geometry.tolist()
+    buildings = [
+        Building(bid, geom if geom is not None else shapely.Polygon(), vz, top, gz)
+        for bid, geom, vz, top, gz in zip(
+            ids, geoms, num("viewpoint_z"), num("top_z"), num("ground_z"), strict=True
+        )
+    ]
+    return Scene(
+        name="city",
+        buildings=assess_buildings(buildings, ground),
+        ground=ground,
+        landmarks=landmarks,
+        dataset_version="+".join(p.id for p in pins),
+        landmarks_version=version,
+        curvature=True,
+    )
