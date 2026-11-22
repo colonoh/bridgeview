@@ -30,7 +30,7 @@ this repository. `bridgeview download` fetches it into `data/raw/`.
 | License | U.S. Government work, public domain |
 | Retrieved | Recorded in `datasets.toml` (`retrieved`) |
 | Used for | Bare-earth ground surface for terrain blocking (FR-004) and for placing viewpoints. CRS EPSG:26910; heights NAVD88 metres. |
-| Known gaps | Coverage over Alcatraz, Treasure Island and Yerba Buena Island is to be checked (tasks.md, the Alcatraz/Treasure Island coverage check in US3). |
+| Coverage | Checked 2026-11-22: there is data on Alcatraz, Treasure Island and Yerba Buena Island; open water is nodata (research R2). |
 
 ## Landmark reference points
 

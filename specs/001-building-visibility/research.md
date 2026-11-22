@@ -79,8 +79,22 @@ tiles together cover longitude −122.546 to −122.318 and latitude 37.675 to 3
 all of San Francisco, including Alcatraz, Treasure Island and Yerba Buena Island.
 Published 2024-08-26. USGS 3DEP data is in the public domain.
 
-**To verify during implementation**: that the tiles hold data, not nodata, over Alcatraz and
-Treasure Island. Buildings whose viewpoint falls on nodata are "not evaluated" (FR-015).
+**Verified 2026-11-22** by downloading and probing the tiles. All four are EPSG:26910 at 1 m,
+with nodata = −999999. Sample values, NAVD88 m:
+
+| Probe | Value |
+|---|---|
+| Alcatraz, at the lighthouse | 41.64 |
+| Treasure Island | 3.57 |
+| Yerba Buena Island | 66.61 |
+| Twin Peaks (slope) | 255.25 |
+| Downtown | 7.29 |
+| Open bay water | nodata |
+
+So the islands are covered, and water is nodata, which the ground check treats as no
+obstruction. As a cross-check, Alcatraz ground (41.6 m) plus the 84 ft (26 m) lighthouse tower
+gives about 67 m, which agrees with the 66.8 m focal height in R5. Buildings whose viewpoint
+falls on nodata are still "not evaluated" (FR-015).
 
 **Alternatives considered**:
 - 3DEP 1/3 arc-second, about 10 m: rejected, because it is too coarse for street-scale
