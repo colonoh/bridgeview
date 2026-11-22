@@ -29,11 +29,11 @@ own.
 
 **Purpose**: Dependencies, tooling and directory layout
 
-- [ ] T001 Add `rasterio` as a runtime dependency and `mypy` as a dev dependency with `uv add rasterio` and `uv add --dev mypy`, updating `pyproject.toml` and `uv.lock` (research R8)
-- [ ] T002 Add `[project.scripts] bridgeview = "bridgeview.cli:main"` and a `[tool.mypy]` section (`strict = true`, `files = ["src"]`, and ignore missing imports for `rasterio.*` and `shapely.*` only if their stubs are missing) to `pyproject.toml`
-- [ ] T003 [P] Add a `uv run mypy` step after `uv sync --locked` in `.github/workflows/ci.yml`. This closes pre-merge gate 3 (plan, Constitution Check V).
-- [ ] T004 [P] Add `data/` to `.gitignore`
-- [ ] T005 [P] Create the test layout `tests/unit/`, `tests/property/`, `tests/acceptance/` and `tests/fixtures/scenes/`, with a shared `tests/conftest.py` that exposes a `scenes_dir` fixture path
+- [x] T001 Add `rasterio` as a runtime dependency and `mypy` as a dev dependency with `uv add rasterio` and `uv add --dev mypy`, updating `pyproject.toml` and `uv.lock` (research R8)
+- [x] T002 Add `[project.scripts] bridgeview = "bridgeview.cli:main"` and a `[tool.mypy]` section (`strict = true`, `files = ["src"]`, and ignore missing imports for `rasterio.*` and `shapely.*` only if their stubs are missing) to `pyproject.toml`
+- [x] T003 [P] Add a `uv run mypy` step after `uv sync --locked` in `.github/workflows/ci.yml`. This closes pre-merge gate 3 (plan, Constitution Check V).
+- [x] T004 [P] Add `data/` to `.gitignore`
+- [x] T005 [P] Create the test layout `tests/unit/`, `tests/property/`, `tests/acceptance/` and `tests/fixtures/scenes/`, with a shared `tests/conftest.py` that exposes a `scenes_dir` fixture path
 
 ---
 
@@ -43,9 +43,9 @@ own.
 
 **⚠️ CRITICAL**: No user story work can begin until this phase is complete
 
-- [ ] T006 Write `tests/unit/test_cli.py`, testing that unknown subcommands and missing required options exit `2`, and that an `error:` line goes to stderr (contracts/cli.md)
-- [ ] T007 Implement the argparse skeleton in `src/bridgeview/cli.py`, with `main(argv: list[str] | None = None) -> int`. It has `download`, `compute` and `snapshot-buildings` subcommands, stub handlers that raise `NotImplementedError`, and a shared error handler that prints `error: <message>` to stderr and returns exit codes 0, 1 or 2 per contracts/cli.md.
-- [ ] T008 [P] Expose `__version__` in `src/bridgeview/__init__.py` from `importlib.metadata.version("bridgeview")`. Remove the placeholder `hello()` and update `tests/test_smoke.py` to assert that `__version__` is a non-empty string.
+- [x] T006 Write `tests/unit/test_cli.py`, testing that unknown subcommands and missing required options exit `2`, and that an `error:` line goes to stderr (contracts/cli.md)
+- [x] T007 Implement the argparse skeleton in `src/bridgeview/cli.py`, with `main(argv: list[str] | None = None) -> int`. It has `download`, `compute` and `snapshot-buildings` subcommands, stub handlers that raise `NotImplementedError`, and a shared error handler that prints `error: <message>` to stderr and returns exit codes 0, 1 or 2 per contracts/cli.md.
+- [x] T008 [P] Expose `__version__` in `src/bridgeview/__init__.py` from `importlib.metadata.version("bridgeview")`. Remove the placeholder `hello()` and update `tests/test_smoke.py` to assert that `__version__` is a non-empty string.
 
 **Checkpoint**: `uv run bridgeview --help` works, and CI is green with mypy.
 
@@ -66,27 +66,27 @@ Each fixture is a pair of files, `tests/fixtures/scenes/<name>.toml` and
 comment block showing the full hand calculation. Use `curvature = false` except in the
 `curvature` scene.
 
-- [ ] T009 [P] [US1] Fixture `three_boxes_blocked`: A, B and C in a row, with B above the A→t1 line, so A is `not_visible` with `t1=building:B` (US1 scenario 1)
-- [ ] T010 [P] [US1] Fixture `three_boxes_clear`: the same row with B below the line, so A is `visible` (US1 scenarios 2 and 3)
-- [ ] T011 [P] [US1] Fixture `grazing`: the A→t1 line passes exactly through B's top edge, so it is not blocked (FR-006)
-- [ ] T012 [P] [US1] Fixture `self_block`: the observer's `top_z` is above its `viewpoint_z`, and it is still `visible` (FR-005, US1 scenario 4)
-- [ ] T013 [P] [US1] Fixture `two_points`: one landmark with points t1 (blocked by B) and t2 (clear), so it is `visible`, `visible_points=t2` and `blockers=t1=building:B` (US1 scenario 5)
-- [ ] T014 [P] [US1] Fixture `ground_ridge`: a ground grid with a ridge above the line, so the blocker is `ground` (US1 scenario 6, FR-004)
-- [ ] T015 [P] [US1] Fixture `courtyard`: a U-shaped footprint whose centroid falls in the courtyard. The viewpoint is at the centroid, and a neighbour in the courtyard blocks as normal (clarification Q2, spec Edge Cases).
-- [ ] T016 [P] [US1] Fixture `curvature`: flat ground at 0 with observer and target at 1 m and 10 km apart, so the ground blocks only because of curvature. The hand calculation is `(1−k)·D²/(8R) ≈ 1.71 m > 1 m` (FR-007, research R4).
-- [ ] T017 [P] [US1] Fixture `target_in_footprint`: t1 lies inside building L, whose `top_z` is above t1. A's view of t1 is not blocked by L, while a taller building M between A and L does block it (spec Edge Cases: a landmark's own structure).
-- [ ] T018 [P] [US1] Fixture `zero_height`: building Z has `viewpoint_z = ground_z`, so it is `not_evaluated` with `missing_height`, and it doesn't block A, even though its `top_z` is above the A→t1 line (spec Edge Cases: missing or invalid height; data-model.md `Building.evaluable`)
-- [ ] T019 [US1] Write the acceptance test `tests/acceptance/test_fixture_scenes.py`. It is parametrised over every `*.toml` in `tests/fixtures/scenes/`, runs `cli.main(["compute", "--scene", …, "--out", tmp])`, and asserts the output is byte-identical to `<name>.expected.csv`, ignoring the `software_version` column.
-- [ ] T020 [P] [US1] Write unit tests in `tests/unit/test_sightline.py` for the curvature drop, the corrected target height, and the exact maximum of the downward-curving clearance over a stretch, including a peak inside the stretch (data-model.md SightLine; research R6)
-- [ ] T021 [P] [US1] Write unit tests in `tests/unit/test_ground.py` for bilinear sampling on a small grid, the constant plane, and NaN outside the grid or on nodata (data-model.md `GroundModel.origin_x`, `GroundModel.origin_y`, `GroundModel.resolution`, `GroundModel.z`)
-- [ ] T022 [P] [US1] Write unit tests in `tests/unit/test_results.py` for the column order, fixed decimals, sorting, `;` and `=` encoding, and every invariant in contracts/results-csv.md (data-model.md `VisibilityResult.status`, `VisibilityResult.visible_points`, `VisibilityResult.blockers`)
-- [ ] T023 [P] [US1] Write Hypothesis properties in `tests/property/test_monotonicity.py` on random box scenes. Raising any non-observer building's `top_z` never turns blocked into visible. Removing a building never turns visible into blocked. Raising the observer's `viewpoint_z` never turns visible into blocked. A building never appears in its own blockers (plan, Constitution Check II).
+- [x] T009 [P] [US1] Fixture `three_boxes_blocked`: A, B and C in a row, with B above the A→t1 line, so A is `not_visible` with `t1=building:B` (US1 scenario 1)
+- [x] T010 [P] [US1] Fixture `three_boxes_clear`: the same row with B below the line, so A is `visible` (US1 scenarios 2 and 3)
+- [x] T011 [P] [US1] Fixture `grazing`: the A→t1 line passes exactly through B's top edge, so it is not blocked (FR-006)
+- [x] T012 [P] [US1] Fixture `self_block`: the observer's `top_z` is above its `viewpoint_z`, and it is still `visible` (FR-005, US1 scenario 4)
+- [x] T013 [P] [US1] Fixture `two_points`: one landmark with points t1 (blocked by B) and t2 (clear), so it is `visible`, `visible_points=t2` and `blockers=t1=building:B` (US1 scenario 5)
+- [x] T014 [P] [US1] Fixture `ground_ridge`: a ground grid with a ridge above the line, so the blocker is `ground` (US1 scenario 6, FR-004)
+- [x] T015 [P] [US1] Fixture `courtyard`: a U-shaped footprint whose centroid falls in the courtyard. The viewpoint is at the centroid, and a neighbour in the courtyard blocks as normal (clarification Q2, spec Edge Cases).
+- [x] T016 [P] [US1] Fixture `curvature`: flat ground at 0 with observer and target at 1 m and 10 km apart, so the ground blocks only because of curvature. The hand calculation is `(1−k)·D²/(8R) ≈ 1.71 m > 1 m` (FR-007, research R4).
+- [x] T017 [P] [US1] Fixture `target_in_footprint`: t1 lies inside building L, whose `top_z` is above t1. A's view of t1 is not blocked by L, while a taller building M between A and L does block it (spec Edge Cases: a landmark's own structure).
+- [x] T018 [P] [US1] Fixture `zero_height`: building Z has `viewpoint_z = ground_z`, so it is `not_evaluated` with `missing_height`, and it doesn't block A, even though its `top_z` is above the A→t1 line (spec Edge Cases: missing or invalid height; data-model.md `Building.evaluable`)
+- [x] T019 [US1] Write the acceptance test `tests/acceptance/test_fixture_scenes.py`. It is parametrised over every `*.toml` in `tests/fixtures/scenes/`, runs `cli.main(["compute", "--scene", …, "--out", tmp])`, and asserts the output is byte-identical to `<name>.expected.csv`, ignoring the `software_version` column.
+- [x] T020 [P] [US1] Write unit tests in `tests/unit/test_sightline.py` for the curvature drop, the corrected target height, and the exact maximum of the downward-curving clearance over a stretch, including a peak inside the stretch (data-model.md SightLine; research R6)
+- [x] T021 [P] [US1] Write unit tests in `tests/unit/test_ground.py` for bilinear sampling on a small grid, the constant plane, and NaN outside the grid or on nodata (data-model.md `GroundModel.origin_x`, `GroundModel.origin_y`, `GroundModel.resolution`, `GroundModel.z`)
+- [x] T022 [P] [US1] Write unit tests in `tests/unit/test_results.py` for the column order, fixed decimals, sorting, `;` and `=` encoding, and every invariant in contracts/results-csv.md (data-model.md `VisibilityResult.status`, `VisibilityResult.visible_points`, `VisibilityResult.blockers`)
+- [x] T023 [P] [US1] Write Hypothesis properties in `tests/property/test_monotonicity.py` on random box scenes. Raising any non-observer building's `top_z` never turns blocked into visible. Removing a building never turns visible into blocked. Raising the observer's `viewpoint_z` never turns visible into blocked. A building never appears in its own blockers (plan, Constitution Check II).
 
 ### Implementation for User Story 1
 
-- [ ] T024 [P] [US1] Implement `Building`, `Landmark`, `ReferencePoint` and `Scene` as frozen dataclasses in `src/bridgeview/scene.py`, with `load_scene(path) -> Scene` for the fixture TOML format. Each field follows data-model.md: `Building.building_id`, `Building.footprint`, `Building.viewpoint_z`, `Building.top_z`, `Building.ground_z`, `Landmark.id`, `Landmark.name`, `ReferencePoint.id`, `ReferencePoint.lat`, `ReferencePoint.lon`, `ReferencePoint.z`, `ReferencePoint.source` and `landmarks_version`. Fixtures give `x` and `y` in place of `lat` and `lon`, per contracts/scene-fixture.md. Compute data-model.md `Building.viewpoint` (the centroid, even when outside the footprint) and `Building.evaluable` (reasons `invalid_geometry` or `missing_height`). Set data-model.md `Scene.dataset_version` and `Scene.landmarks_version`; for fixtures, `landmarks_version` is optional and defaults to `"fixture"`. Reject a missing `crs` or any `crs` other than EPSG:26910 (Constitution IV).
-- [ ] T025 [P] [US1] Implement `GroundModel` in `src/bridgeview/ground.py`, with `constant(z)` and `from_grid(origin_x, origin_y, resolution, z)` constructors and a vectorised `sample(x, y) -> ndarray` (data-model.md `GroundModel.origin_x`, `GroundModel.origin_y`, `GroundModel.resolution`, `GroundModel.z`)
-- [ ] T026 [US1] Implement the sight-line maths and building blocking in `src/bridgeview/visibility.py`:
+- [x] T024 [P] [US1] Implement `Building`, `Landmark`, `ReferencePoint` and `Scene` as frozen dataclasses in `src/bridgeview/scene.py`, with `load_scene(path) -> Scene` for the fixture TOML format. Each field follows data-model.md: `Building.building_id`, `Building.footprint`, `Building.viewpoint_z`, `Building.top_z`, `Building.ground_z`, `Landmark.id`, `Landmark.name`, `ReferencePoint.id`, `ReferencePoint.lat`, `ReferencePoint.lon`, `ReferencePoint.z`, `ReferencePoint.source` and `landmarks_version`. Fixtures give `x` and `y` in place of `lat` and `lon`, per contracts/scene-fixture.md. Compute data-model.md `Building.viewpoint` (the centroid, even when outside the footprint) and `Building.evaluable` (reasons `invalid_geometry` or `missing_height`). Set data-model.md `Scene.dataset_version` and `Scene.landmarks_version`; for fixtures, `landmarks_version` is optional and defaults to `"fixture"`. Reject a missing `crs` or any `crs` other than EPSG:26910 (Constitution IV).
+- [x] T025 [P] [US1] Implement `GroundModel` in `src/bridgeview/ground.py`, with `constant(z)` and `from_grid(origin_x, origin_y, resolution, z)` constructors and a vectorised `sample(x, y) -> ndarray` (data-model.md `GroundModel.origin_x`, `GroundModel.origin_y`, `GroundModel.resolution`, `GroundModel.z`)
+- [x] T026 [US1] Implement the sight-line maths and building blocking in `src/bridgeview/visibility.py`:
   - The constants k = 0.13, R = 6,371,000 m and margin = 0.001 m.
   - Build an `STRtree` over the evaluable footprints and run a vectorised `query` against the lines.
   - For each crossed footprint, find the stretch of line inside it and the exact maximum clearance over that stretch.
@@ -94,10 +94,10 @@ comment block showing the full hand calculation. Use `curvature = false` except 
   - Not-evaluated buildings are not obstructions.
 
   (data-model.md SightLine; research R6 step 1)
-- [ ] T027 [US1] Add ground blocking to `src/bridgeview/visibility.py`: sample every 1 m from 2 m to `d_total − 2 m`, and block when the corrected ground is more than the margin above the line. Choose the first blocker as the one nearest the observer, then combine the points into per-landmark results (data-model.md `VisibilityResult.status`, `VisibilityResult.visible_points`, `VisibilityResult.blockers`; research R6 steps 2 and 3). Expose `compute_visibility(scene, workers=None)`, which runs serially for now.
-- [ ] T028 [P] [US1] Implement `BuildingResult`, `RunMeta` and `write_results_csv` in `src/bridgeview/results.py`, following contracts/results-csv.md exactly. Reproject viewpoints from EPSG:26910 to EPSG:4326 with pyproj (`always_xy=True`), and write to `path.tmp` before renaming.
-- [ ] T029 [US1] Wire `compute --scene FILE --out FILE` in `src/bridgeview/cli.py`. Write data-model.md `Scene.dataset_version` and `Scene.landmarks_version` into `RunMeta`.
-- [ ] T030 [US1] Re-export the public API (`load_scene`, `compute_visibility`, `write_results_csv`, `Scene`, `BuildingResult` and `RunMeta`) from `src/bridgeview/__init__.py`, with typed docstrings that state units (Constitution V)
+- [x] T027 [US1] Add ground blocking to `src/bridgeview/visibility.py`: sample every 1 m from 2 m to `d_total − 2 m`, and block when the corrected ground is more than the margin above the line. Choose the first blocker as the one nearest the observer, then combine the points into per-landmark results (data-model.md `VisibilityResult.status`, `VisibilityResult.visible_points`, `VisibilityResult.blockers`; research R6 steps 2 and 3). Expose `compute_visibility(scene, workers=None)`, which runs serially for now.
+- [x] T028 [P] [US1] Implement `BuildingResult`, `RunMeta` and `write_results_csv` in `src/bridgeview/results.py`, following contracts/results-csv.md exactly. Reproject viewpoints from EPSG:26910 to EPSG:4326 with pyproj (`always_xy=True`), and write to `path.tmp` before renaming.
+- [x] T029 [US1] Wire `compute --scene FILE --out FILE` in `src/bridgeview/cli.py`. Write data-model.md `Scene.dataset_version` and `Scene.landmarks_version` into `RunMeta`.
+- [x] T030 [US1] Re-export the public API (`load_scene`, `compute_visibility`, `write_results_csv`, `Scene`, `BuildingResult` and `RunMeta`) from `src/bridgeview/__init__.py`, with typed docstrings that state units (Constitution V)
 
 **Checkpoint**: All fixture, unit and property tests pass, and the MVP is usable on any
 hand-built scene.

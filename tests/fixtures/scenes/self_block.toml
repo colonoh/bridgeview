@@ -1,0 +1,32 @@
+# Hand calculation (curvature off; all heights NAVD88 m; x, y as offsets from 550000, 4180000)
+#
+#   A: x 0..10, viewpoint (5, 5), viewpoint_z 10, top_z 40 (a spire)
+# Target t1 at (105, 5), z 10.
+#
+# A -> t1: D = 100, flat line h(d) = 10. The line starts inside A's own
+#   footprint (d = 0..5), where A's top (40) is 30 m above it. If A could block
+#   itself it would. FR-005 says a building never blocks its own view, and no
+#   other building exists.
+#   => A: visible
+name = "self_block"
+crs = "EPSG:26910"
+curvature = false
+
+[ground]
+constant_z = 0.0
+
+[[buildings]]
+id = "A"
+footprint = [[550000, 4180000], [550010, 4180000], [550010, 4180010], [550000, 4180010]]
+viewpoint_z = 10.0
+top_z = 40.0
+
+[[landmarks]]
+id = "target"
+name = "Target"
+[[landmarks.points]]
+id = "t1"
+x = 550105.0
+y = 4180005.0
+z = 10.0
+source = "fixture"

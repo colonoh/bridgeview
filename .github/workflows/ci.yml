@@ -19,4 +19,5 @@ jobs:
         with:
           enable-cache: true
       - run: uv sync --locked
+      - run: uv run mypy
       - run: uv run pytest

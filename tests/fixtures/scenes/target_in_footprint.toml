@@ -1,0 +1,60 @@
+# Hand calculation (curvature off; all heights NAVD88 m; x, y as offsets from 550000, 4180000)
+#
+#   L: x 100..110, y 0..10,     viewpoint (105, 5),   viewpoint_z 40, top_z 40 (holds t1)
+#   A: x 0..10,    y 0..10,     viewpoint (5, 5),     viewpoint_z 10, top_z 10 (west of L)
+#   M: x 100..110, y -50..-40,  viewpoint (105, -45), viewpoint_z 40, top_z 40
+#   S: x 100..110, y -100..-90, viewpoint (105, -95), viewpoint_z 10, top_z 10 (south)
+# Target t1 at (105, 5), z 30: inside L's footprint and below L's top.
+#
+# A -> t1: D = 100, h(d) = 10 + 0.2 d, along y = 5. The line enters L at d = 95
+#   (h = 29 < 40), but L contains t1, so L is skipped (spec Edge Cases: a
+#   landmark's own structure). Nothing else is crossed.
+#   => A: visible
+# S -> t1: D = 100, h(d) = 10 + 0.2 d, along x = 105. M occupies d = 45..55
+#   (h = 19..21), and M's top (40) is above that: blocked by M. So the skip
+#   applies only to the footprint that holds the point.
+#   => S: not_visible, t1=building:M
+# M -> t1: D = 50, from 40 down to 30. Only L is crossed, and it is skipped.
+#   => M: visible
+# L -> t1: the viewpoint is directly above t1 (D = 0), with nothing in between.
+#   => L: visible
+name = "target_in_footprint"
+crs = "EPSG:26910"
+curvature = false
+
+[ground]
+constant_z = 0.0
+
+[[buildings]]
+id = "A"
+footprint = [[550000, 4180000], [550010, 4180000], [550010, 4180010], [550000, 4180010]]
+viewpoint_z = 10.0
+top_z = 10.0
+
+[[buildings]]
+id = "L"
+footprint = [[550100, 4180000], [550110, 4180000], [550110, 4180010], [550100, 4180010]]
+viewpoint_z = 40.0
+top_z = 40.0
+
+[[buildings]]
+id = "M"
+footprint = [[550100, 4179950], [550110, 4179950], [550110, 4179960], [550100, 4179960]]
+viewpoint_z = 40.0
+top_z = 40.0
+
+[[buildings]]
+id = "S"
+footprint = [[550100, 4179900], [550110, 4179900], [550110, 4179910], [550100, 4179910]]
+viewpoint_z = 10.0
+top_z = 10.0
+
+[[landmarks]]
+id = "target"
+name = "Target"
+[[landmarks.points]]
+id = "t1"
+x = 550105.0
+y = 4180005.0
+z = 30.0
+source = "fixture"

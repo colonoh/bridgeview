@@ -1,0 +1,35 @@
+# Hand calculation (CURVATURE ON; all heights NAVD88 m; x, y as offsets from 550000, 4180000)
+#
+#   A: x 0..10, viewpoint (5, 5), viewpoint_z 1, top_z 1
+# Target t1 at (10005, 5), z 1. D = 10,000 m over flat ground at 0.
+#
+# Drop coefficient c = (1 - k) / (2R) = 0.87 / 12,742,000 = 6.8278e-8 per m.
+# Corrected target z' = 1 - c D^2 = 1 - 6.8278 = -5.8278.
+# Line h(d) = 1 + (z' - 1) d / D = 1 - c D d.
+# Corrected ground at d: 0 - c d^2.
+# Ground minus line = c d (D - d) - 1, largest at d = D/2:
+#   c D^2 / 4 - 1 = 1.7070 - 1 = 0.707 m > 0.001  ->  blocked by the ground.
+# (Without curvature the line would sit 1 m above flat ground: visible.)
+#   => A: not_visible, t1=ground (FR-007)
+name = "curvature"
+crs = "EPSG:26910"
+curvature = true
+
+[ground]
+constant_z = 0.0
+
+[[buildings]]
+id = "A"
+footprint = [[550000, 4180000], [550010, 4180000], [550010, 4180010], [550000, 4180010]]
+viewpoint_z = 1.0
+top_z = 1.0
+
+[[landmarks]]
+id = "target"
+name = "Target"
+[[landmarks.points]]
+id = "t1"
+x = 560005.0
+y = 4180005.0
+z = 1.0
+source = "fixture"
