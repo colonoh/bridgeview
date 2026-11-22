@@ -180,7 +180,8 @@ elevation model along the line for the ground.
    about 8×10⁸ building checks, and about 10¹⁰ ground samples. That fits in the 1-hour target
    (SC-004) on 8 cores. A benchmark task confirms this early.
 
-**Benchmark (T050, 2026-11-22)**, on a 2-core, 3 GB machine with the real data:
+**Benchmark (T050, 2026-11-22)**, on a 2-core, 3.8 GB machine with the real data
+(the last row's full-city times are extrapolated from 5,000 random buildings):
 
 | Version | ms per observer (one core) | Full city, 2 cores | Full city, 8 cores (est.) |
 |---|---|---|---|
@@ -197,8 +198,25 @@ elevation model along the line for the ground.
   after.
 - Loading the city takes about 35 s once the elevation cache exists; building the cache the
   first time adds about 20 s. Peak memory is about 1.3 GB.
-- SC-004 (under 1 hour) is met on an 8-core laptop. The raster pre-filter fallback is not
-  needed.
+- **Full run (T051, 2026-11-22, same machine, 2 workers)**: exit 0, 176,864 buildings
+  evaluated, peak RSS of the largest process 1.3 GB, but **7 h 8 min elapsed** against the
+  88 min extrapolated.
+  - CPU time was not the problem: 10,417 s of user time is 87 min on 2 cores, which matches
+    the benchmark.
+  - `sar` shows the run CPU-bound (about 99% user) for the first 50 minutes. From about 09:45
+    UTC it was I/O-bound (about 45-74% iowait, 41-90 MB/s read, under 10% user for most of
+    the rest), with 16.7 million major page faults in total. Available memory and
+    page cache each fell from about 1.0 GB to about 0.5 GB while committed memory rose. The
+    880 MB elevation cache is memory-mapped, so once it no longer fits in the page cache it
+    is re-read from disk continually.
+  - What used the extra memory has not been isolated. Candidates are results accumulating in
+    the parent process and copy-on-write pages in the forked workers.
+  - An earlier note put the run at about 2 h 50 min on 2 cores, from the rate of an
+    interrupted run. That figure is superseded.
+- SC-004 (under 1 hour) is **not shown**. The CPU time alone extrapolates to about 22 min on
+  8 cores, but that has not been measured, and 8 workers need more memory than 2. On a
+  machine with 3.8 GB it is missed by a wide margin. The raster pre-filter fallback would cut
+  CPU time, which was not the limit here.
 
 **Alternatives considered**:
 - Rasterise the buildings and march along each line through one combined height grid:
