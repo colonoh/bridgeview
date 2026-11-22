@@ -63,9 +63,9 @@ elevation grid of about 15 × 15 km.
 | New runtime dependency justified | ✅ | rasterio (research R8). |
 | Computation separable from presentation | ✅ | The CSV is the only interface, and there is no web code in this feature. |
 
-**Open item, not a violation**: the observer height field. Research R1 recommends
-`median_1st_m`, because the data has no clean "lowest roof" field. The owner needs to
-confirm this and update FR-001's wording before implementation.
+**Observer height**: the observer uses `median_1st_m`, as decided by the owner on 2026-11-22.
+FR-001 has been updated to match. The 2010 vintage of the heights is a documented limitation
+(research R1).
 
 **Post-design re-check**: ✅ The design adds no new principle violations. The type-check gap
 is planned as a task.

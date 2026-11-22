@@ -12,7 +12,7 @@
 
 ### Session 2026-11-21
 
-- Q: When the building data gives more than one height for a building, which one is used? → A: The observer uses the lowest recorded roof height, and the obstruction uses the highest recorded height. Viewing from inside, at floor level, is deferred to a later feature.
+- Q: When the building data gives more than one height for a building, which one is used? → A: The observer uses the typical (median) roof height, and the obstruction uses the highest recorded height. Viewing from inside, at floor level, is deferred to a later feature. (Originally "lowest roof height". It was revised on 2026-11-22 because the data's minimum field includes edge cells at street level; see research R1.)
 - Q: For an L-shaped, U-shaped or courtyard building whose geometric center falls outside the footprint, where is the observer? → A: Always at the geometric center, even when it falls outside the footprint.
 - Q: Does the ground-elevation model show bare ground or the surface including buildings and trees? → A: Bare ground only, with buildings, trees and other structures removed.
 
@@ -137,8 +137,8 @@ judged visible and why any were not, for example which building blocked the view
   unobstructed straight sight line exists from the building's viewpoint to the landmark.
   The viewpoint is a single point at the building's roof height, directly above the geometric
   center of its footprint. The geometric center is used even when it falls outside the
-  footprint, for example in a courtyard. The viewpoint's height is the building's ground elevation plus its lowest
-  recorded roof height.
+  footprint, for example in a courtyard. The viewpoint's height is the building's typical
+  (median) roof elevation.
 - **FR-002**: Each landmark MUST be represented by a small set of documented reference points,
   for example both tower tops and midspan of a bridge, or several points around the island.
   A landmark MUST count as visible from a building when at least one of its reference points
@@ -203,7 +203,7 @@ judged visible and why any were not, for example which building blocked the view
 ### Key Entities
 
 - **Building**: a structure from the source dataset. It has a source identifier, a footprint
-  shape, a lowest roof height (used for its viewpoint), a highest height (used when it blocks
+  shape, a typical roof height (used for its viewpoint), a highest height (used when it blocks
   others) and a ground elevation. A building is both an observer and a
   potential obstruction.
 - **Landmark**: one of the three targets. It has a name, a small set of named reference
@@ -245,8 +245,12 @@ judged visible and why any were not, for example which building blocked the view
   The exact datasets and versions are chosen during planning and recorded per FR-012.
 - Trees, ground features finer than the elevation model's resolution, weather, haze and window
   placement are ignored. Visibility here means geometric line of sight only.
-- Observing from the lowest roof height and blocking at the highest height is deliberately
-  cautious: it errs toward reporting a view as blocked. Rooftop spires and antennas are
+- Observing from the typical roof height and blocking at the highest height is deliberately
+  cautious: it errs toward reporting a view as blocked.
+- Building heights come from a 2010 LiDAR survey, while the footprints are from 2017. Buildings
+  completed after 2010, such as Salesforce Tower, probably carry the height of their 2010 site,
+  so they are under-represented both as observers and as obstructions. Fresh heights from the
+  2023 USGS LiDAR are a candidate later feature. Rooftop spires and antennas are
   treated as solid blocks over the whole footprint. Observing from inside the building at
   floor level is a later feature.
 - Observing from one point at the roof center and checking a few points per landmark is a

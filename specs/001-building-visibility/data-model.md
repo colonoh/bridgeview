@@ -11,7 +11,7 @@ One footprint from the building dataset, or from a fixture scene.
 |---|---|---|---|
 | `building_id` | str | `sf16_bldgid` | Unique within a scene; this is also the sort key for output |
 | `footprint` | Polygon or MultiPolygon | `shape`, reprojected from EPSG:4326 | Must be valid and non-empty, or the building is not evaluated |
-| `viewpoint_z` | float, m | `median_1st_m` (pending owner confirmation, see research R1) | Must be finite |
+| `viewpoint_z` | float, m | `median_1st_m` (research R1) | Must be finite |
 | `top_z` | float, m | `peak_1st_m` | Must be finite and ≥ `viewpoint_z`; if lower, it is raised to `viewpoint_z` and a warning is logged |
 | `ground_z` | float, m | `gnd_min_m` | Reported only; the ground check uses the elevation model |
 

@@ -31,15 +31,27 @@ SHA-256.
 so a live export's checksum would change daily even when the content doesn't. A release asset
 is fixed, so it can be pinned and verified (FR-009, FR-010).
 
-**⚠ Owner decision needed: which field is the "lowest recorded roof height"?** The dataset
-has no field that is a clean lowest roof height. `hgt_mincm` includes cells at the footprint
-edge, which are at or near ground level. In a 3,000-building sample, its median was 3.4 m
-while the median of `hgt_mediancm` was 6.4 m, and 180 buildings had `hgt_mincm` at or below
-1 m. Using it would put most observers near street level, not on the roof. The
-plan therefore uses **`median_1st_m` (a typical roof elevation) for the observer** and
-**`peak_1st_m` for obstructions**. The obstruction choice matches the clarification. The
-observer choice is the closest field to the clarified intent, but it is not literally the
-"lowest" one, so it needs the owner's confirmation and a matching spec wording change.
+**Observer height: decided by the owner on 2026-11-22.** The observer uses
+**`median_1st_m`**, and obstructions use **`peak_1st_m`**. The dataset has no clean "lowest roof"
+field. Here are the options compared on a random sample of 5,000 buildings, as height above
+ground:
+
+| Option | 10th pct | Median | 90th pct | Buildings ≤ 1.5 m |
+|---|---|---|---|---|
+| `hgt_mincm` (minimum) | 1.4 | 3.4 | 6.2 | 594 |
+| median − 1 std. dev. | 4.6 | 6.2 | 10.0 | 22 |
+| `hgt_majoritycm` | 5.5 | 7.3 | 11.6 | 11 |
+| `hgt_meancm` | 5.4 | 7.2 | 11.1 | 3 |
+| **median (chosen)** | 5.5 | 7.4 | 11.4 | 4 |
+| `hgt_maxcm` (maximum, the same surface as `peak_1st_m`) | 6.5 | 9.4 | 13.7 | 1 |
+| `p2010_zmaxn88ft` (3D model; missing for 32,060 buildings) | 6.8 | 10.7 | 15.9 | 81 |
+
+The minimum includes edge cells at street level, so it isn't a roof. The median is steady and
+isn't moved by spikes.
+
+**Known limitation**: all heights come from the 2010 LiDAR. Buildings completed after 2010
+probably carry the height of their 2010 site. Rebuilding heights from the 2023 USGS LiDAR
+point cloud is a candidate later feature (spec Assumptions).
 
 **Alternatives considered**:
 - Pinning a live Socrata export by checksum: rejected, because the checksum changes daily.
