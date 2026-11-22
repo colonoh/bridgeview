@@ -38,6 +38,14 @@ def test_bad_scene_exits_1(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -
     assert not out.exists()
 
 
-def test_unimplemented_commands_exit_1(capsys: pytest.CaptureFixture[str]) -> None:
+def test_download_without_pins_exits_1(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    monkeypatch.chdir(tmp_path)
     assert main(["download"]) == 1
     assert capsys.readouterr().err.startswith("error: ")
+
+
+def test_compute_city_not_implemented_yet(capsys: pytest.CaptureFixture[str]) -> None:
+    assert main(["compute", "--city", "--out", "x.csv"]) == 1
+    assert "not implemented" in capsys.readouterr().err

@@ -1,0 +1,53 @@
+# Pinned input datasets (spec FR-009 to FR-012; data-model.md: DatasetPin).
+# Provenance details: docs/data-sources.md. Fetch with `uv run bridgeview download`.
+# Order matters: dataset_version joins these ids with "+" in this order.
+
+[[datasets]]
+id = "sf-buildings-20261122"
+url = "https://github.com/colonoh/bridgeview/releases/download/data-buildings-20261122/sf-buildings-20261122.geojson.gz"
+sha256 = "1b15f20a94cfb764bb5e34d594f685e06586e3ac185b5f60c3c5a6ee799eb589"
+size = 71194797
+filename = "sf-buildings-20261122.geojson.gz"
+source = "DataSF Building Footprints (ynuv-fyni), GeoJSON export via bridgeview snapshot-buildings"
+license = "ODC PDDL 1.0"
+retrieved = "2026-11-22"
+
+[[datasets]]
+id = "usgs-1m-x54y418"
+url = "https://prd-tnm.s3.amazonaws.com/StagedProducts/Elevation/1m/Projects/CA_SanFrancisco_B23/TIFF/USGS_1M_10_x54y418_CA_SanFrancisco_B23.tif"
+sha256 = "ff3afb13eb3bc64996aa3318825efef82b34ead35ad4c8342b7136e04ca4d07f"
+size = 176580019
+filename = "USGS_1M_10_x54y418_CA_SanFrancisco_B23.tif"
+source = "USGS 3DEP 1 m DEM, project CA_SanFrancisco_B23 (published 2024-08-26)"
+license = "Public domain (U.S. Government work)"
+retrieved = "2026-11-22"
+
+[[datasets]]
+id = "usgs-1m-x54y419"
+url = "https://prd-tnm.s3.amazonaws.com/StagedProducts/Elevation/1m/Projects/CA_SanFrancisco_B23/TIFF/USGS_1M_10_x54y419_CA_SanFrancisco_B23.tif"
+sha256 = "34ade3c7249f61ac8d8eaf7973f67c9e5c3304ec9d4500dcb79d11b332cb9957"
+size = 111944984
+filename = "USGS_1M_10_x54y419_CA_SanFrancisco_B23.tif"
+source = "USGS 3DEP 1 m DEM, project CA_SanFrancisco_B23 (published 2024-08-26)"
+license = "Public domain (U.S. Government work)"
+retrieved = "2026-11-22"
+
+[[datasets]]
+id = "usgs-1m-x55y418"
+url = "https://prd-tnm.s3.amazonaws.com/StagedProducts/Elevation/1m/Projects/CA_SanFrancisco_B23/TIFF/USGS_1M_10_x55y418_CA_SanFrancisco_B23.tif"
+sha256 = "a7bdf929446234f06642452bb43600cc650e93ccf8713d6f479becf848c69781"
+size = 147948547
+filename = "USGS_1M_10_x55y418_CA_SanFrancisco_B23.tif"
+source = "USGS 3DEP 1 m DEM, project CA_SanFrancisco_B23 (published 2024-08-26)"
+license = "Public domain (U.S. Government work)"
+retrieved = "2026-11-22"
+
+[[datasets]]
+id = "usgs-1m-x55y419"
+url = "https://prd-tnm.s3.amazonaws.com/StagedProducts/Elevation/1m/Projects/CA_SanFrancisco_B23/TIFF/USGS_1M_10_x55y419_CA_SanFrancisco_B23.tif"
+sha256 = "9cc9c03f4ddaf8ec6712951b980157ea02293c7723761466e6e60f21147a9424"
+size = 86461076
+filename = "USGS_1M_10_x55y419_CA_SanFrancisco_B23.tif"
+source = "USGS 3DEP 1 m DEM, project CA_SanFrancisco_B23 (published 2024-08-26)"
+license = "Public domain (U.S. Government work)"
+retrieved = "2026-11-22"

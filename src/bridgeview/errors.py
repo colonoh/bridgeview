@@ -7,3 +7,15 @@ class BridgeviewError(Exception):
 
 class SceneError(BridgeviewError):
     """A scene file or dataset could not be loaded or is invalid."""
+
+
+class PinsError(BridgeviewError):
+    """``datasets.toml`` is missing or malformed."""
+
+
+class ChecksumError(BridgeviewError):
+    """A pinned file is missing or does not match its recorded size or SHA-256."""
+
+
+class DownloadError(BridgeviewError):
+    """A download failed (network or HTTP error)."""

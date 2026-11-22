@@ -72,7 +72,18 @@ def main(argv: Sequence[str] | None = None) -> int:
     try:
         if args.command == "compute":
             return _compute(args)
-        raise NotImplementedError(f"'{args.command}' is not implemented yet")
+        if args.command == "download":
+            from bridgeview.pins import download_all
+
+            download_all(args.data_dir)
+            return 0
+        if args.command == "snapshot-buildings":
+            from bridgeview.pins import snapshot_buildings
+
+            size, sha = snapshot_buildings(args.out)
+            print(f"size {size}\nsha256 {sha}")
+            return 0
+        raise NotImplementedError(f"'{args.command}' is not implemented yet")  # pragma: no cover
     except BridgeviewError as e:
         print(f"error: {e}", file=sys.stderr)
         return 1
