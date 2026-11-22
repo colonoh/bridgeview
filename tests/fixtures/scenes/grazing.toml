@@ -1,0 +1,50 @@
+# Hand calculation (curvature off; all heights NAVD88 m; x, y as offsets from 550000, 4180000)
+#
+#   A: x 0..10,  viewpoint (5, 5),  viewpoint_z 10, top_z 10
+#   B: x 40..50, viewpoint (45, 5), viewpoint_z 24, top_z 24
+#   C: x 80..90, viewpoint (85, 5), viewpoint_z 10, top_z 10
+# Target t1 at (105, 5), z 50.
+#
+# A -> t1: h(d) = 10 + 0.4 d. B occupies d = 35..45, where h = 24..28.
+#   Clearance = 24 - h(d) is largest at d = 35 (B's near top edge, x = 40):
+#   24 - 24 = 0. The line touches B's top edge exactly but does not pass
+#   through it, so it is not blocked (FR-006; blocking needs > 0.001 m).
+#   => A: visible
+# B -> t1: D = 60, h(d) = 24 + 26 d / 60. C occupies d = 35..45, h = 39.2..43.5 > 10.
+#   => B: visible
+# C -> t1: nothing in between.
+#   => C: visible
+name = "grazing"
+crs = "EPSG:26910"
+curvature = false
+
+[ground]
+constant_z = 0.0
+
+[[buildings]]
+id = "A"
+footprint = [[550000, 4180000], [550010, 4180000], [550010, 4180010], [550000, 4180010]]
+viewpoint_z = 10.0
+top_z = 10.0
+
+[[buildings]]
+id = "B"
+footprint = [[550040, 4180000], [550050, 4180000], [550050, 4180010], [550040, 4180010]]
+viewpoint_z = 24.0
+top_z = 24.0
+
+[[buildings]]
+id = "C"
+footprint = [[550080, 4180000], [550090, 4180000], [550090, 4180010], [550080, 4180010]]
+viewpoint_z = 10.0
+top_z = 10.0
+
+[[landmarks]]
+id = "target"
+name = "Target"
+[[landmarks.points]]
+id = "t1"
+x = 550105.0
+y = 4180005.0
+z = 50.0
+source = "fixture"

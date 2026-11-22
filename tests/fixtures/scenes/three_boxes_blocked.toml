@@ -1,0 +1,52 @@
+# Hand calculation (curvature off; all heights NAVD88 m; x, y as offsets from 550000, 4180000)
+#
+# Boxes, all 10 m wide in y (0..10), so every centroid has y = 5:
+#   A: x 0..10,  viewpoint (5, 5),  viewpoint_z 10, top_z 10
+#   B: x 40..50, viewpoint (45, 5), viewpoint_z 30, top_z 30
+#   C: x 80..90, viewpoint (85, 5), viewpoint_z 10, top_z 10
+# Target t1 at (105, 5), z 50.
+#
+# A -> t1: D = 100, line h(d) = 10 + (50 - 10) * d / 100 = 10 + 0.4 d.
+#   B occupies d = 35..45, where h = 24..28. B's top (30) is above that
+#   (clearance 30 - 24 = 6 m at d = 35), so B blocks.
+#   C occupies d = 75..85, where h = 40..44, above C's top (10): no block.
+#   => A: not_visible, t1=building:B
+# B -> t1: D = 60, h(d) = 30 + 20 d / 60. C occupies d = 35..45, h = 41.7..45 > 10.
+#   => B: visible
+# C -> t1: D = 20; nothing lies between C and t1.
+#   => C: visible
+# Ground is 0 everywhere, far below every line.
+name = "three_boxes_blocked"
+crs = "EPSG:26910"
+curvature = false
+
+[ground]
+constant_z = 0.0
+
+[[buildings]]
+id = "A"
+footprint = [[550000, 4180000], [550010, 4180000], [550010, 4180010], [550000, 4180010]]
+viewpoint_z = 10.0
+top_z = 10.0
+
+[[buildings]]
+id = "B"
+footprint = [[550040, 4180000], [550050, 4180000], [550050, 4180010], [550040, 4180010]]
+viewpoint_z = 30.0
+top_z = 30.0
+
+[[buildings]]
+id = "C"
+footprint = [[550080, 4180000], [550090, 4180000], [550090, 4180010], [550080, 4180010]]
+viewpoint_z = 10.0
+top_z = 10.0
+
+[[landmarks]]
+id = "target"
+name = "Target"
+[[landmarks.points]]
+id = "t1"
+x = 550105.0
+y = 4180005.0
+z = 50.0
+source = "fixture"

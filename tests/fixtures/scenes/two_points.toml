@@ -1,0 +1,47 @@
+# Hand calculation (curvature off; all heights NAVD88 m; x, y as offsets from 550000, 4180000)
+#
+#   A: x 0..10,  y 0..10, viewpoint (5, 5),  viewpoint_z 10, top_z 10
+#   B: x 40..50, y 0..10, viewpoint (45, 5), viewpoint_z 30, top_z 30
+# One landmark with two points: t1 at (105, 5) and t2 at (5, 105), both z 50.
+#
+# A -> t1: h(d) = 10 + 0.4 d. B occupies d = 35..45 (h = 24..28 < 30): blocked by B.
+# A -> t2: the line runs north along x = 5. B (x 40..50) is not crossed: clear.
+#   => A: visible, visible_points = t2, blockers = t1=building:B (US1 scenario 5)
+# B -> t1: D = 60, along y = 5, x 45 -> 105. Nothing in between: clear.
+# B -> t2: from (45, 5) to (5, 105): x = 45 - 40u, y = 5 + 100u. While y <= 10
+#   (u <= 0.05), x >= 43, so the line never enters A (x <= 10): clear.
+#   => B: visible, visible_points = t1;t2 (file order)
+name = "two_points"
+crs = "EPSG:26910"
+curvature = false
+
+[ground]
+constant_z = 0.0
+
+[[buildings]]
+id = "A"
+footprint = [[550000, 4180000], [550010, 4180000], [550010, 4180010], [550000, 4180010]]
+viewpoint_z = 10.0
+top_z = 10.0
+
+[[buildings]]
+id = "B"
+footprint = [[550040, 4180000], [550050, 4180000], [550050, 4180010], [550040, 4180010]]
+viewpoint_z = 30.0
+top_z = 30.0
+
+[[landmarks]]
+id = "target"
+name = "Target"
+[[landmarks.points]]
+id = "t1"
+x = 550105.0
+y = 4180005.0
+z = 50.0
+source = "fixture"
+[[landmarks.points]]
+id = "t2"
+x = 550005.0
+y = 4180105.0
+z = 50.0
+source = "fixture"

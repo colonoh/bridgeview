@@ -1,0 +1,5 @@
+building_id,lon,lat,viewpoint_z_m,not_evaluated_reason,target_status,target_visible_points,target_blockers,dataset_version,landmarks_version,software_version
+A,-122.4322512,37.7660046,10.00,,visible,t1,,target_in_footprint,fixture,IGNORED
+L,-122.4311159,37.7659992,40.00,,visible,t1,,target_in_footprint,fixture,IGNORED
+M,-122.4311194,37.7655485,40.00,,visible,t1,,target_in_footprint,fixture,IGNORED
+S,-122.4311228,37.7650979,10.00,,not_visible,,t1=building:M,target_in_footprint,fixture,IGNORED

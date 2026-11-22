@@ -1,0 +1,4 @@
+building_id,lon,lat,viewpoint_z_m,not_evaluated_reason,target_status,target_visible_points,target_blockers,dataset_version,landmarks_version,software_version
+A,-122.4322512,37.7660046,10.00,,visible,t1,,grazing,fixture,IGNORED
+B,-122.4317971,37.7660024,24.00,,visible,t1,,grazing,fixture,IGNORED
+C,-122.4313430,37.7660002,10.00,,visible,t1,,grazing,fixture,IGNORED

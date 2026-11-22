@@ -1,0 +1,43 @@
+# Hand calculation (curvature off; all heights NAVD88 m; x, y as offsets from 550000, 4180000)
+#
+#   A: x 0..10, viewpoint (5, 5), viewpoint_z 10, top_z 10
+# Target t1 at (105, 5), z 10. Flat line h(d) = 10, D = 100.
+#
+# Ground grid: nodes every 10 m, x = 0..110, y = 20, 10, 0, -10 (rows north to
+# south). Every node is 0 except the column at x = 50, which is 15 (a ridge).
+# Bilinear interpolation along y = 5 gives, for x in 40..50, ground = 1.5 (x - 40).
+#   The ground at the viewpoint (5, 5) is 0, so A is above ground.
+#   The ridge top (15 at x = 50, d = 45) is 5 m above the line, so the ground blocks.
+#   The first blocking sample: 1.5 (x - 40) - 10 > 0.001 -> x > 46.667. Samples sit at
+#   whole-metre d (x = 5 + d), so the first is d = 42 (x = 47, ground 10.5).
+#   => A: not_visible, t1=ground (US1 scenario 6)
+name = "ground_ridge"
+crs = "EPSG:26910"
+curvature = false
+
+[ground]
+origin_x = 550000.0
+origin_y = 4180020.0
+resolution = 10.0
+z = [
+  [0.0, 0.0, 0.0, 0.0, 0.0, 15.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+  [0.0, 0.0, 0.0, 0.0, 0.0, 15.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+  [0.0, 0.0, 0.0, 0.0, 0.0, 15.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+  [0.0, 0.0, 0.0, 0.0, 0.0, 15.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+]
+
+[[buildings]]
+id = "A"
+footprint = [[550000, 4180000], [550010, 4180000], [550010, 4180010], [550000, 4180010]]
+viewpoint_z = 10.0
+top_z = 10.0
+
+[[landmarks]]
+id = "target"
+name = "Target"
+[[landmarks.points]]
+id = "t1"
+x = 550105.0
+y = 4180005.0
+z = 10.0
+source = "fixture"

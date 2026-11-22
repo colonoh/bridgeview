@@ -1,0 +1,52 @@
+# Hand calculation (curvature off; all heights NAVD88 m; x, y as offsets from 550000, 4180000)
+#
+# U: a U-shaped building, the square x 0..30, y 0..30 minus a courtyard x 10..20,
+#    y 10..30 that opens to the north. viewpoint_z 10, top_z 10.
+#    Area = 900 - 200 = 700.
+#    Centroid x = 15 (symmetric).
+#    Centroid y = (900 * 15 - 200 * 20) / 700 = 9500 / 700 = 13.5714286.
+#    (15, 13.571) lies in the courtyard, outside U's footprint. Clarification Q2
+#    keeps the viewpoint there anyway.
+# N: a pavilion in the courtyard, x 12..18, y 12..18, viewpoint (15, 15),
+#    viewpoint_z 20, top_z 20. U's viewpoint falls inside N's footprint.
+# Target t1 due north at (15, 200), z 10.
+#
+# U -> t1: the line runs north along x = 15 from y = 13.571. It starts inside N
+#   (d = 0..4.43), where N's top (20) is 10 m above the line (h = 10): blocked
+#   by N (spec Edge Cases: irregular footprints). North of the courtyard the
+#   line stays in the opening (x 10..20) and never re-enters U.
+#   => U: not_visible, t1=building:N
+# N -> t1: from (15, 15) at 20 m, down to (15, 200) at 10 m. The line stays in
+#   the courtyard opening, so U's arms are never crossed: clear.
+#   => N: visible
+name = "courtyard"
+crs = "EPSG:26910"
+curvature = false
+
+[ground]
+constant_z = 0.0
+
+[[buildings]]
+id = "U"
+footprint = [
+  [550000, 4180000], [550030, 4180000], [550030, 4180030], [550020, 4180030],
+  [550020, 4180010], [550010, 4180010], [550010, 4180030], [550000, 4180030],
+]
+viewpoint_z = 10.0
+top_z = 10.0
+
+[[buildings]]
+id = "N"
+footprint = [[550012, 4180012], [550018, 4180012], [550018, 4180018], [550012, 4180018]]
+viewpoint_z = 20.0
+top_z = 20.0
+
+[[landmarks]]
+id = "target"
+name = "Target"
+[[landmarks.points]]
+id = "t1"
+x = 550015.0
+y = 4180200.0
+z = 10.0
+source = "fixture"

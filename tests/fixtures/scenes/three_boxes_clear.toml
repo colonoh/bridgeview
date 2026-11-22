@@ -1,0 +1,49 @@
+# Hand calculation (curvature off; all heights NAVD88 m; x, y as offsets from 550000, 4180000)
+#
+# Same layout as three_boxes_blocked, but B is lower:
+#   A: x 0..10,  viewpoint (5, 5),  viewpoint_z 10, top_z 10
+#   B: x 40..50, viewpoint (45, 5), viewpoint_z 20, top_z 20
+#   C: x 80..90, viewpoint (85, 5), viewpoint_z 10, top_z 10
+# Target t1 at (105, 5), z 50.
+#
+# A -> t1: h(d) = 10 + 0.4 d. B occupies d = 35..45, h = 24..28 > 20: no block.
+#   C occupies d = 75..85, h = 40..44 > 10: no block.
+#   => A: visible (US1 scenario 2)
+# B -> t1: D = 60, h(d) = 20 + 30 d / 60. C occupies d = 35..45, h = 37.5..42.5 > 10.
+#   => B: visible
+# C -> t1: nothing in between (US1 scenario 3).
+#   => C: visible
+name = "three_boxes_clear"
+crs = "EPSG:26910"
+curvature = false
+
+[ground]
+constant_z = 0.0
+
+[[buildings]]
+id = "A"
+footprint = [[550000, 4180000], [550010, 4180000], [550010, 4180010], [550000, 4180010]]
+viewpoint_z = 10.0
+top_z = 10.0
+
+[[buildings]]
+id = "B"
+footprint = [[550040, 4180000], [550050, 4180000], [550050, 4180010], [550040, 4180010]]
+viewpoint_z = 20.0
+top_z = 20.0
+
+[[buildings]]
+id = "C"
+footprint = [[550080, 4180000], [550090, 4180000], [550090, 4180010], [550080, 4180010]]
+viewpoint_z = 10.0
+top_z = 10.0
+
+[[landmarks]]
+id = "target"
+name = "Target"
+[[landmarks.points]]
+id = "t1"
+x = 550105.0
+y = 4180005.0
+z = 50.0
+source = "fixture"

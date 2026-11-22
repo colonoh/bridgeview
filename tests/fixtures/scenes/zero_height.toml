@@ -1,0 +1,42 @@
+# Hand calculation (curvature off; all heights NAVD88 m; x, y as offsets from 550000, 4180000)
+#
+#   A: x 0..10,  viewpoint (5, 5),  viewpoint_z 10, top_z 10, ground_z 0
+#   Z: x 40..50, viewpoint (45, 5), viewpoint_z 0,  top_z 30, ground_z 0
+# Target t1 at (105, 5), z 50.
+#
+# Z's roof is not above its ground (0 <= 0), so it has no usable height:
+#   Z is not_evaluated with reason missing_height, and it does not obstruct
+#   (spec Edge Cases: missing or invalid height).
+# A -> t1: h(d) = 10 + 0.4 d. Z occupies d = 35..45 (h = 24..28). Z's top_z
+#   (30) would block if Z counted, but it doesn't.
+#   => A: visible
+name = "zero_height"
+crs = "EPSG:26910"
+curvature = false
+
+[ground]
+constant_z = 0.0
+
+[[buildings]]
+id = "A"
+footprint = [[550000, 4180000], [550010, 4180000], [550010, 4180010], [550000, 4180010]]
+viewpoint_z = 10.0
+top_z = 10.0
+ground_z = 0.0
+
+[[buildings]]
+id = "Z"
+footprint = [[550040, 4180000], [550050, 4180000], [550050, 4180010], [550040, 4180010]]
+viewpoint_z = 0.0
+top_z = 30.0
+ground_z = 0.0
+
+[[landmarks]]
+id = "target"
+name = "Target"
+[[landmarks.points]]
+id = "t1"
+x = 550105.0
+y = 4180005.0
+z = 50.0
+source = "fixture"
