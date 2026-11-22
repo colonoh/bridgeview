@@ -11,6 +11,7 @@ so a line that only touches a surface is not blocked (FR-006).
 
 from __future__ import annotations
 
+import gc
 import math
 import multiprocessing
 import os
@@ -21,6 +22,7 @@ import numpy as np
 import shapely
 from numpy.typing import NDArray
 
+from bridgeview.ground import GroundModel
 from bridgeview.results import (
     NOT_EVALUATED,
     NOT_VISIBLE,
@@ -45,11 +47,17 @@ BATCH_SIZE = 16
 #: Longest segment used when querying the footprint index (m).
 QUERY_SEGMENT_M = 100.0
 #: Most ground samples held in memory at once.
-GROUND_CHUNK = 2_000_000
+GROUND_CHUNK = 250_000
 
 GROUND = "ground"
 
+#: Codes in an outcome array; any other value is the blocking building's position
+#: in the index (``_Index``).
+CLEAR_CODE = -1
+GROUND_CODE = -2
+
 FloatArray = NDArray[np.float64]
+Outcomes = NDArray[np.int32]
 
 
 def curvature_coefficient(enabled: bool) -> float:
@@ -80,7 +88,11 @@ def max_clearance(
 
 @dataclass(frozen=True)
 class _Index:
-    """Spatial index over the evaluable footprints."""
+    """Spatial index over the evaluable footprints, and the arrays a batch needs.
+
+    Workers read only these arrays, never the Building objects: touching a Python
+    object changes its reference count, which would copy its page in each worker.
+    """
 
     tree: shapely.STRtree
     building_index: NDArray[np.intp]  # tree position -> index in scene.buildings
@@ -88,6 +100,8 @@ class _Index:
     contains_keys: NDArray[np.int64]  # point index * n_tree + tree position, for footprints containing a point
     id_rank: NDArray[np.intp]  # tree position -> rank of building_id (tie-break)
     bounds: FloatArray  # tree position -> (min_x, min_y, max_x, max_y), m
+    viewpoint: FloatArray  # tree position -> viewpoint (x, y, z), m
+    points: FloatArray  # point index -> reference point (x, y, z), m
 
 
 def _build_index(scene: Scene, points: list[ReferencePoint]) -> _Index:
@@ -102,7 +116,16 @@ def _build_index(scene: Scene, points: list[ReferencePoint]) -> _Index:
     rank = np.empty(len(idx), dtype=np.intp)
     rank[np.argsort(ids, kind="stable")] = np.arange(len(idx))
     bounds = shapely.bounds(np.asarray(geoms, dtype=object)).reshape(-1, 4)
-    return _Index(tree, np.array(idx, dtype=np.intp), tops, np.sort(keys), rank, bounds)
+    viewpoint = np.empty((len(idx), 3))
+    for t, i in enumerate(idx):
+        b = scene.buildings[i]
+        xy = b.viewpoint_xy
+        assert xy is not None and b.viewpoint_z is not None
+        viewpoint[t] = (xy[0], xy[1], b.viewpoint_z)
+    point_xyz = np.array([(p.x, p.y, p.z) for p in points], dtype=np.float64).reshape(-1, 3)
+    return _Index(
+        tree, np.array(idx, dtype=np.intp), tops, np.sort(keys), rank, bounds, viewpoint, point_xyz
+    )
 
 
 def _crossed_footprints(
@@ -135,30 +158,21 @@ def _crossed_footprints(
 
 
 def _evaluate_batch(
-    scene: Scene,
+    ground: GroundModel,
     index: _Index,
-    points: list[ReferencePoint],
-    observers: list[int],
+    observers: NDArray[np.intp],
     c: float,
-) -> dict[tuple[int, int], tuple[bool, str | None]]:
-    """Outcome of every (observer, point) line: (clear, blocker or None)."""
-    n_pts = len(points)
-    tree_pos = {int(b): t for t, b in enumerate(index.building_index)}
-    vx = np.empty(len(observers) * n_pts)
-    vy = np.empty_like(vx)
-    vz = np.empty_like(vx)
-    own = np.empty(len(vx), dtype=np.intp)
-    px = np.tile(np.array([p.x for p in points]), len(observers))
-    py = np.tile(np.array([p.y for p in points]), len(observers))
-    pz = np.tile(np.array([p.z for p in points]), len(observers))
+) -> Outcomes:
+    """Outcome of every line from ``observers`` (tree positions) to every point.
+
+    Returns an int32 array of shape (observers, points): ``CLEAR_CODE``,
+    ``GROUND_CODE``, or the tree position of the nearest blocking building.
+    """
+    n_pts = len(index.points)
+    own = np.repeat(observers, n_pts)
+    vx, vy, vz = index.viewpoint[own].T
     pk = np.tile(np.arange(n_pts), len(observers))
-    for o, bi in enumerate(observers):
-        b = scene.buildings[bi]
-        xy = b.viewpoint_xy
-        assert xy is not None and b.viewpoint_z is not None
-        sl = slice(o * n_pts, (o + 1) * n_pts)
-        vx[sl], vy[sl], vz[sl] = xy[0], xy[1], b.viewpoint_z
-        own[sl] = tree_pos[bi]
+    px, py, pz = index.points[pk].T
 
     dx, dy = px - vx, py - vy
     dist = np.hypot(dx, dy)
@@ -168,7 +182,7 @@ def _evaluate_batch(
 
     n_lines = len(vx)
     bld_d = np.full(n_lines, np.inf)
-    bld_id = np.full(n_lines, -1, dtype=np.intp)
+    bld_pos = np.full(n_lines, -1, dtype=np.intp)
 
     # --- Buildings: exact intersection of each line with each crossed footprint.
     lines = shapely.linestrings(np.stack([np.c_[vx, vy], np.c_[px, py]], axis=1))
@@ -224,7 +238,7 @@ def _evaluate_batch(
                 ls = lines_b[order]
                 first = order[np.r_[True, ls[1:] != ls[:-1]]]
                 bld_d[lines_b[first]] = d_b[first]
-                bld_id[lines_b[first]] = index.building_index[tpos_b[first]]
+                bld_pos[lines_b[first]] = tpos_b[first]
 
     # --- Ground: sample every GROUND_STEP_M, skipping GROUND_END_SKIP_M at each end.
     # Only the stretch before the nearest building blocker can change the answer.
@@ -240,23 +254,16 @@ def _evaluate_batch(
         base = ends[start_line - 1] if start_line else 0
         stop = int(np.searchsorted(ends, base + GROUND_CHUNK, side="right"))
         stop = max(stop, start_line + 1)
-        _ground_hits(scene, c, gnd_d, n_samples, start_line, stop, vx, vy, vz, ux, uy, slope)
+        _ground_hits(ground, c, gnd_d, n_samples, start_line, stop, vx, vy, vz, ux, uy, slope)
         start_line = stop
 
-    out: dict[tuple[int, int], tuple[bool, str | None]] = {}
-    for line in range(n_lines):
-        key = (observers[line // n_pts], line % n_pts)
-        if bld_d[line] == np.inf and gnd_d[line] == np.inf:
-            out[key] = (True, None)
-        elif bld_d[line] <= gnd_d[line]:
-            out[key] = (False, f"building:{scene.buildings[int(bld_id[line])].building_id}")
-        else:
-            out[key] = (False, GROUND)
-    return out
+    clear_line = np.isinf(bld_d) & np.isinf(gnd_d)
+    out = np.where(clear_line, CLEAR_CODE, np.where(bld_d <= gnd_d, bld_pos, GROUND_CODE))
+    return out.astype(np.int32).reshape(len(observers), n_pts)
 
 
 def _ground_hits(
-    scene: Scene,
+    ground: GroundModel,
     c: float,
     gnd_d: FloatArray,
     n_samples: NDArray[np.int64],
@@ -277,7 +284,7 @@ def _ground_hits(
     line = np.repeat(np.arange(lo, hi), counts)
     starts = np.cumsum(counts) - counts
     ds = GROUND_END_SKIP_M + (np.arange(total) - np.repeat(starts, counts)) * GROUND_STEP_M
-    g = scene.ground.sample(vx[line] + ux[line] * ds, vy[line] + uy[line] * ds)
+    g = ground.sample(vx[line] + ux[line] * ds, vy[line] + uy[line] * ds)
     exceed = (g - c * ds * ds) - (vz[line] + slope[line] * ds)
     hit = exceed > MARGIN_M  # NaN (nodata, e.g. open water) compares False
     np.minimum.at(gnd_d, line[hit], ds[hit])
@@ -296,13 +303,13 @@ def _not_evaluated(scene: Scene, b: Building) -> BuildingResult:
 
 
 #: Shared with forked worker processes (copy-on-write); set only during a run.
-_WORKER_STATE: tuple[Scene, _Index, list[ReferencePoint], float] | None = None
+_WORKER_STATE: tuple[GroundModel, _Index, float] | None = None
 
 
-def _run_batch(batch: list[int]) -> dict[tuple[int, int], tuple[bool, str | None]]:
+def _run_batch(span: tuple[int, int]) -> Outcomes:
     assert _WORKER_STATE is not None
-    scene, index, points, c = _WORKER_STATE
-    return _evaluate_batch(scene, index, points, batch, c)
+    ground, index, c = _WORKER_STATE
+    return _evaluate_batch(ground, index, np.arange(*span, dtype=np.intp), c)
 
 
 def compute_visibility(
@@ -326,32 +333,38 @@ def compute_visibility(
     points = [p for lm in scene.landmarks for p in lm.points]
     c = curvature_coefficient(scene.curvature)
     index = _build_index(scene, points)
-    evaluable = [i for i, b in enumerate(scene.buildings) if b.evaluable]
-    batches = [evaluable[i : i + BATCH_SIZE] for i in range(0, len(evaluable), BATCH_SIZE)]
+    n_obs = len(index.building_index)
+    spans = [(i, min(i + BATCH_SIZE, n_obs)) for i in range(0, n_obs, BATCH_SIZE)]
     n_workers = workers or os.cpu_count() or 1
-    outcomes: dict[tuple[int, int], tuple[bool, str | None]] = {}
-    done = 0
+    # One int32 per sight line: about 9 MB for the whole city.
+    outcomes = np.empty((n_obs, len(points)), dtype=np.int32)
 
-    def collect(out: dict[tuple[int, int], tuple[bool, str | None]], size: int) -> None:
-        nonlocal done
-        outcomes.update(out)
-        done += size
+    def collect(span: tuple[int, int], out: Outcomes) -> None:
+        outcomes[span[0] : span[1]] = out
         if progress is not None:
-            progress(done, len(evaluable))
+            progress(span[1], n_obs)
 
-    use_pool = n_workers > 1 and len(batches) > 1
+    use_pool = n_workers > 1 and len(spans) > 1
     if use_pool and "fork" in multiprocessing.get_all_start_methods():
-        _WORKER_STATE = (scene, index, points, c)
+        _WORKER_STATE = (scene.ground, index, c)
+        # Keep the garbage collector in the workers from writing to inherited objects.
+        gc.collect()
+        gc.freeze()
         try:
             with multiprocessing.get_context("fork").Pool(n_workers) as pool:
-                for batch, out in zip(batches, pool.imap(_run_batch, batches, chunksize=4), strict=True):
-                    collect(out, len(batch))
+                for span, out in zip(spans, pool.imap(_run_batch, spans, chunksize=4), strict=True):
+                    collect(span, out)
         finally:
+            gc.unfreeze()
             _WORKER_STATE = None
     else:
-        for batch in batches:
-            collect(_evaluate_batch(scene, index, points, batch, c), len(batch))
+        for span in spans:
+            ids = np.arange(*span, dtype=np.intp)
+            collect(span, _evaluate_batch(scene.ground, index, ids, c))
 
+    # Blocker labels are shared between results rather than rebuilt per sight line.
+    labels: dict[int, str] = {GROUND_CODE: GROUND}
+    position = {int(bi): t for t, bi in enumerate(index.building_index)}
     results: list[BuildingResult] = []
     for bi, b in enumerate(scene.buildings):
         if not b.evaluable:
@@ -360,18 +373,19 @@ def compute_visibility(
         xy = b.viewpoint_xy
         assert xy is not None
         per_landmark: list[VisibilityResult] = []
-        k = 0
+        codes = iter(outcomes[position[bi]].tolist())
         for lm in scene.landmarks:
             visible: list[str] = []
             blockers: list[tuple[str, str]] = []
             for p in lm.points:
-                clear, blocker = outcomes[(bi, k)]
-                k += 1
-                if clear:
+                code = next(codes)
+                if code == CLEAR_CODE:
                     visible.append(p.id)
-                else:
-                    assert blocker is not None
-                    blockers.append((p.id, blocker))
+                    continue
+                if code not in labels:
+                    blocker = scene.buildings[index.building_index[code]]
+                    labels[code] = f"building:{blocker.building_id}"
+                blockers.append((p.id, labels[code]))
             status = VISIBLE if visible else NOT_VISIBLE
             per_landmark.append(VisibilityResult(lm.id, status, tuple(visible), tuple(blockers)))
         results.append(
