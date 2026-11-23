@@ -32,6 +32,7 @@ dev = [
 fail_under = 90
 
 [tool.pytest.ini_options]
+testpaths = ["tests"]
 addopts = "--cov=bridgeview --cov-report=term-missing"
 
 [project.scripts]
