@@ -72,7 +72,8 @@ def _fmt(value: float | None, decimals: int) -> str:
 
 
 def header(landmark_ids: Sequence[str]) -> list[str]:
-    """The CSV header for the given landmark ids, in order."""
+    """The results CSV column names (contracts/results-csv.md): the building columns,
+    three columns per landmark in ``landmark_ids`` order, then the run metadata."""
     cols = ["building_id", "lon", "lat", "viewpoint_z_m", "not_evaluated_reason"]
     for lid in landmark_ids:
         cols += [f"{lid}_status", f"{lid}_visible_points", f"{lid}_blockers"]
@@ -107,7 +108,10 @@ def write_results_csv(
 ) -> None:
     """Write the results CSV to ``path`` (contracts/results-csv.md).
 
-    Rows are sorted by ``building_id``. The file is written to ``<path>.tmp``
+    Viewpoints are converted from EPSG:26910 metres to EPSG:4326 longitude and
+    latitude; heights are NAVD88 metres. ``landmark_ids`` fixes the column order
+    even when ``results`` is empty. Rows are sorted by ``building_id``. The file
+    is written to ``<path>.tmp``
     and renamed into place, so a failed run leaves no partial file.
     """
     path = Path(path)

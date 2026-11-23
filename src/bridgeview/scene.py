@@ -90,7 +90,11 @@ class Landmark:
 
 @dataclass(frozen=True, eq=False)
 class Scene:
-    """Everything one computation run needs."""
+    """Everything one computation run needs.
+
+    All coordinates are EPSG:26910 metres and all heights NAVD88 metres.
+    ``curvature`` turns the Earth-curvature and refraction correction on.
+    """
 
     name: str
     buildings: tuple[Building, ...]
@@ -300,7 +304,7 @@ def load_city_scene(data_dir: Path, pins_path: Path | None = None) -> Scene:
     checksums; callers do that first (``bridgeview.pins.verify_pins``).
 
     Raises SceneError if the pins don't name exactly one building file and at
-    least one tile, or if a required field is missing.
+    least one tile, a required field is missing, or the tiles can't be used.
     """
     import geopandas as gpd
     import numpy as np
@@ -333,7 +337,10 @@ def load_city_scene(data_dir: Path, pins_path: Path | None = None) -> Scene:
         max(bx1, *xs) + GROUND_BUFFER_M,
         max(by1, *ys) + GROUND_BUFFER_M,
     )
-    ground = GroundModel.from_tiles(tiles, extent, Path(data_dir) / "cache")
+    try:
+        ground = GroundModel.from_tiles(tiles, extent, Path(data_dir) / "cache")
+    except (ValueError, OSError) as e:
+        raise SceneError(f"elevation tiles: {e}") from e
 
     def num(col: str) -> list[float]:
         vals = pd.to_numeric(gdf[CITY_FIELDS[col]], errors="coerce").to_numpy(dtype=float)
