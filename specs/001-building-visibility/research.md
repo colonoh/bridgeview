@@ -266,6 +266,43 @@ and formatting give byte-identical reruns (FR-018).
 Python's built-in `tomllib`, `hashlib` and `urllib` cover the pin file, checksums and
 downloads, so no other packages are needed.
 
+## R9. Mutation testing (T055)
+
+**Run (2026-11-23)**: `uv run mutmut run` (3.8.1) on `src/bridgeview/visibility.py`, 838 mutants.
+
+| | Killed by a test | Timed out or crashed | Survived |
+|---|---|---|---|
+| Before new tests | 692 | 6 | 140 |
+| After `test_oracle.py` and `test_engine_edges.py` | 752 | 2 | 84 |
+| After three more edge tests, re-running the 4 mutants they target | 756 | 2 | 80 |
+
+- The first run showed that the fixtures' sight lines, which run along the x axis, left the y
+  terms, rotated footprints, nearest-blocker choice and ground curvature untested. The oracle
+  test (a slow separate implementation on 8 random scenes: 678 visible lines, 495 blocked by
+  buildings, 507 by the ground) and the hand-worked edge tests cover these. They found no
+  engine bug: the engine passed every one as written.
+- mutmut caches results: after adding tests, delete `mutants/`, or run the mutants by name.
+
+**Accepted survivors (80)**: judged by reading each one, not proven equivalent. Numbers are
+mutmut's, for this version of the file.
+
+| Why it can't change an answer | Count | Mutants |
+|---|---|---|
+| Array dtype, sort kind or `reshape` argument with the same effect on this data | 29 | build_index 8, 10, 23, 29, 32, 34, 37, 39, 42, 44, 46, 55, 57, 59, 79, 81, 83, 102, 104; crossed_footprints 68, 70; evaluate_batch 61, 64, 101, 102; run_batch 11, 13; compute_visibility 76, 78 |
+| `max(n, 1)` became `max(n, 2)`: the key base only needs to be at least the building count, and the same base is used to pack and unpack | 3 | build_index 28; crossed_footprints 63; evaluate_batch 97 |
+| Weaker `assert` on a condition the loader guarantees | 1 | build_index 67 |
+| Initial value that is always replaced, or whose meaning already equals `CLEAR_CODE` | 4 | evaluate_batch 65, 66, 356, 361 |
+| Index query asks for more footprints than needed; the exact check rejects the extras | 6 | crossed_footprints 9, 28, 30, 33, 53, 55 |
+| Bounding-box prefilter is looser or equal; the exact check decides | 8 | evaluate_batch 132, 133, 137, 142, 143, 147, 149, 163 |
+| Clip limits that only remove rounding, because an intersection lies on the line | 5 | evaluate_batch 217, 220, 221, 235, 236 |
+| Placeholder for parts with no coordinates, which are masked out later | 4 | evaluate_batch 227, 231, 242, 246 |
+| Zero-length lines (target at the viewpoint): no samples are taken and the containing footprint is exempt | 6 | evaluate_batch 30, 32, 39, 43, 51, 90 |
+| How ground samples are grouped into chunks: speed and memory only | 7 | evaluate_batch 306, 308, 309, 311, 312, 320, 321 |
+| `/` became `*` (or the reverse) by a step of 1 m | 2 | evaluate_batch 298; ground_hits 19 |
+| Pool details: `strict`, which guards against a length mismatch that can't occur, and `chunksize` | 5 | compute_visibility 58, 61, 67, 68, 69 |
+
+The step row is true only while `GROUND_STEP_M` is 1.
+
 ## Sources
 
 - [DataSF Building Footprints](https://data.sfgov.org/Geographic-Locations-and-Boundaries/Building-Footprints/ynuv-fyni), from the Socrata metadata API

@@ -169,10 +169,10 @@ hour, and reruns are byte-identical.
 
 ## Phase 6: Polish & Cross-Cutting Concerns
 
-- [ ] T052 [P] Audit the public functions in `src/bridgeview/` for type annotations and docstrings that state inputs, outputs, units and CRS, so that `uv run mypy` passes in strict mode (Constitution V)
-- [ ] T053 [P] Add a "Usage" section to `README.md` covering `download`, `compute --scene`, `compute --city` and the CSV contract link
-- [ ] T054 Confirm coverage is at least 90% with `uv run pytest`, and add unit tests for any uncovered branches in `src/bridgeview/`
-- [ ] T055 Run `uv run mutmut run` on `src/bridgeview/visibility.py`. Add tests that kill the surviving mutants, or list the accepted survivors with reasons in research.md (Constitution II).
+- [x] T052 [P] Audit the public functions in `src/bridgeview/` for type annotations and docstrings that state inputs, outputs, units and CRS, so that `uv run mypy` passes in strict mode (Constitution V)
+- [x] T053 [P] Add a "Usage" section to `README.md` covering `download`, `compute --scene`, `compute --city` and the CSV contract link
+- [x] T054 Confirm coverage is at least 90% with `uv run pytest`, and add unit tests for any uncovered branches in `src/bridgeview/`
+- [x] T055 Run `uv run mutmut run` on `src/bridgeview/visibility.py`. Add tests that kill the surviving mutants, or list the accepted survivors with reasons in research.md (Constitution II).
 - [ ] T056 The owner runs the quickstart §4 spot check of 20 random buildings and records the score against SC-003 (at least 18 of 20) in the PR description
 
 ---
